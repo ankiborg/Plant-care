@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Species {
+  id             String     @id @default(cuid())
+  commonName     String
+  scientificName String?
+  baseWaterDays  Int        // watering interval (days) in ideal/reference conditions
+  baseFertDays   Int?       // fertilizing interval (days) during growing season; null = don't fertilize
+  lightPref      LightLevel
+  defaultSoil    SoilType   @default(STANDARD)
+  toxicToPets    Boolean    @default(false)
+  notes          String?
+  plants         Plant[]
+}
+
+model Plant {
+  id         String       @id @default(cuid())
+  nickname   String
+  species    Species      @relation(fields: [speciesId], references: [id])
+  speciesId  String
+  location   String?      // free text for now, e.g. "Living room, east window"
+  potSize    PotSize      @default(MEDIUM)
+  soil       SoilType     @default(STANDARD)
+  light      LightLevel
+  acquiredAt DateTime     @default(now())
+  archived   Boolean      @default(false)
+  logs       CareLog[]
+  photos     PlantPhoto[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+model CareLog {
+  id      String   @id @default(cuid())
+  plant   Plant    @relation(fields: [plantId], references: [id])
+  plantId String
+  type    CareType
+  doneAt  DateTime @default(now())
+  note    String?
+}
+
+model PlantPhoto {
+  id      String   @id @default(cuid())
+  plant   Plant    @relation(fields: [plantId], references: [id])
+  plantId String
+  url     String
+  takenAt DateTime @default(now())
+  note    String?
+}
+
+enum LightLevel {
+  LOW
+  MEDIUM
+  BRIGHT_INDIRECT
+  DIRECT
+}
+
+enum SoilType {
+  DRAINING
+  STANDARD
+  RETAINING
+}
+
+enum PotSize {
+  SMALL
+  MEDIUM
+  LARGE
+}
+
+enum CareType {
+  WATER
+  FERTILIZE
+  REPOT
+  PRUNE
+  CLEAN
+  NOTE
+}
