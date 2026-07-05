@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 import { notFound } from "next/navigation";
 import {
   archivePlant,
@@ -14,6 +13,7 @@ import {
   PlantWithRelations,
 } from "@/lib/care";
 import { prisma } from "@/lib/prisma";
+import { PhotoGallery } from "./photo-gallery";
 
 export const dynamic = "force-dynamic";
 
@@ -151,29 +151,14 @@ export default async function PlantDetailPage({
           </div>
         </form>
 
-        {plant.photos.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            No photos yet — take one now so future-you can see the growth.
-          </p>
-        ) : (
-          <ul className="grid grid-cols-3 gap-2">
-            {plant.photos.map((photo) => (
-              <li key={photo.id}>
-                <a href={photo.url} target="_blank" rel="noreferrer">
-                  <img
-                    src={photo.url}
-                    alt={photo.note ?? formatDate(photo.takenAt)}
-                    className="aspect-square w-full rounded-lg object-cover"
-                  />
-                </a>
-                <p className="mt-1 text-xs text-gray-500">
-                  {formatDate(photo.takenAt)}
-                  {photo.note ? ` · ${photo.note}` : ""}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
+        <PhotoGallery
+          photos={plant.photos.map((photo) => ({
+            id: photo.id,
+            url: photo.url,
+            takenAt: photo.takenAt.toISOString(),
+            note: photo.note,
+          }))}
+        />
       </section>
 
       {/* Edit attributes */}
