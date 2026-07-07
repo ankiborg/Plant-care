@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createPlant } from "@/lib/actions";
 import { prisma } from "@/lib/prisma";
 import { SubmitButton } from "../../submit-button";
+import { IdentifyField } from "./identify-field";
 
 export const dynamic = "force-dynamic";
 
@@ -28,18 +29,14 @@ export default async function NewPlantPage() {
       )}
 
       <form action={createPlant} className="card space-y-5 p-5">
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-[var(--color-ink)]">Species</span>
-          <select name="speciesId" required className="field">
-            {species.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.commonName}
-                {s.scientificName ? ` — ${s.scientificName}` : ""}
-                {s.toxicToPets ? "  (toxic to pets)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
+        <IdentifyField
+          species={species.map((s) => ({
+            id: s.id,
+            commonName: s.commonName,
+            scientificName: s.scientificName,
+            toxicToPets: s.toxicToPets,
+          }))}
+        />
 
         <label className="block space-y-1.5">
           <span className="text-sm font-medium text-[var(--color-ink)]">Nickname</span>
