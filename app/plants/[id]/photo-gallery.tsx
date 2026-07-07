@@ -84,7 +84,7 @@ export function PhotoGallery({ photos }: { photos: PhotoItem[] }) {
             onClick={enterCompare}
             disabled={!canCompare}
             title={canCompare ? undefined : "Add at least 2 photos to compare"}
-            className="rounded-full bg-[var(--color-sage)] px-3 py-1.5 text-sm font-medium text-[var(--color-forest)] hover:bg-[#d3e0cf] disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-full bg-[var(--color-sage)] px-3 py-1.5 text-sm font-medium text-[var(--color-forest)] transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Compare growth
           </button>

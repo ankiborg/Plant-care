@@ -2,6 +2,72 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+
+function IconMoon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <path
+        d="M20.5 14.3A8 8 0 1 1 9.7 3.5a6.5 6.5 0 0 0 10.8 10.8Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconSun() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M12 2.5v2M12 19.5v2M4.5 12h-2M21.5 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ThemeToggle() {
+  const [theme, setTheme] = useState<"light" | "dark" | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    if (stored === "dark" || stored === "light") setTheme(stored);
+    else
+      setTheme(
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light"
+      );
+  }, []);
+
+  function toggle() {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try {
+        localStorage.setItem("theme", next);
+      } catch {
+        /* private mode — ignore */
+      }
+      return next;
+    });
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-muted)] transition-colors hover:bg-[var(--color-sage)] hover:text-[var(--color-forest)]"
+    >
+      {theme === "dark" ? <IconSun /> : theme === "light" ? <IconMoon /> : null}
+    </button>
+  );
+}
 
 function LeafMark({ className = "" }: { className?: string }) {
   return (
@@ -53,13 +119,16 @@ function IconAdd() {
 export function TopBar() {
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[var(--color-canvas)]/85 backdrop-blur">
-      <div className="mx-auto flex max-w-xl items-center gap-2 px-5 py-3.5">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-sage)] text-[var(--color-forest)]">
-          <LeafMark className="h-4 w-4" />
-        </span>
-        <span className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-[var(--color-forest)]">
-          Fern
-        </span>
+      <div className="mx-auto flex max-w-xl items-center justify-between px-5 py-3">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-sage)] text-[var(--color-forest)]">
+            <LeafMark className="h-4 w-4" />
+          </span>
+          <span className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-[var(--color-forest)]">
+            Fern
+          </span>
+        </div>
+        <ThemeToggle />
       </div>
     </header>
   );

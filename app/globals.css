@@ -111,7 +111,8 @@
     color: var(--color-forest);
   }
   .btn-ghost:hover {
-    background: #d3e0cf;
+    /* adaptive: darkens in light theme, lightens in dark theme */
+    background: color-mix(in srgb, var(--color-sage), var(--color-ink) 10%);
   }
   .pill {
     display: inline-flex;
@@ -123,5 +124,65 @@
     letter-spacing: 0.01em;
     padding: 0.2rem 0.6rem;
     white-space: nowrap;
+  }
+}
+
+/* ---- Dark theme -------------------------------------------------------- */
+/* Shared dark token values (kept in sync between the two selectors below). */
+@layer base {
+  /* System preference, unless the user has explicitly chosen light. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --color-canvas: #0f1410;
+      --color-surface: #171e18;
+      --color-surface-2: #212b22;
+      --color-ink: #e9efe5;
+      --color-muted: #a2ad9e;
+      --color-faint: #74806f;
+      --color-line: #29332b;
+      --color-forest: #63c187;
+      --color-forest-hover: #6fce93;
+      --color-moss: #7cc492;
+      --color-sage: #223129;
+      --color-clay: #e59a72;
+      --color-clay-soft: #3a2820;
+      --color-honey: #e0b455;
+      --color-honey-soft: #352b13;
+    }
+    :root:not([data-theme="light"]) .btn-primary {
+      background: #2f7a50;
+    }
+    :root:not([data-theme="light"]) .btn-primary:hover {
+      background: #388c5c;
+    }
+  }
+
+  /* Explicit user choice always wins. */
+  :root[data-theme="dark"] {
+    --color-canvas: #0f1410;
+    --color-surface: #171e18;
+    --color-surface-2: #212b22;
+    --color-ink: #e9efe5;
+    --color-muted: #a2ad9e;
+    --color-faint: #74806f;
+    --color-line: #29332b;
+    --color-forest: #63c187;
+    --color-forest-hover: #6fce93;
+    --color-moss: #7cc492;
+    --color-sage: #223129;
+    --color-clay: #e59a72;
+    --color-clay-soft: #3a2820;
+    --color-honey: #e0b455;
+    --color-honey-soft: #352b13;
+  }
+  :root[data-theme="dark"] .btn-primary {
+    background: #2f7a50;
+  }
+  :root[data-theme="dark"] .btn-primary:hover {
+    background: #388c5c;
+  }
+
+  html {
+    color-scheme: light dark;
   }
 }
