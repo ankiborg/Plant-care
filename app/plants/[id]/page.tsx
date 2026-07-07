@@ -17,6 +17,7 @@ import { daysBetween, startOfUTCDay } from "@/lib/schedule";
 import { prisma } from "@/lib/prisma";
 import { PhotoGallery } from "./photo-gallery";
 import { ArchiveButton } from "./archive-button";
+import { DiagnosePanel } from "./diagnose-panel";
 import { SubmitButton } from "../../submit-button";
 
 export const dynamic = "force-dynamic";
@@ -218,6 +219,8 @@ export default async function PlantDetailPage({
             note: photo.note,
           }))}
         />
+
+        <DiagnosePanel plantId={plant.id} hasPhoto={plant.photos.length > 0} />
       </section>
 
       {/* Details (progressive disclosure) */}
