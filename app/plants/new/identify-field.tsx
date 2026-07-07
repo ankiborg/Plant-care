@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { identifyFromUpload, IdentifyState } from "@/lib/actions";
+import { MAX_PHOTO_MB, photoTooLargeMessage } from "@/lib/photo-limits";
 
 interface Species {
   id: string;
@@ -26,6 +27,10 @@ export function IdentifyField({ species }: { species: Species[] }) {
     const file = fileRef.current?.files?.[0];
     if (!file) {
       setState({ status: "error", message: "Choose a photo first." });
+      return;
+    }
+    if (file.size > MAX_PHOTO_MB * 1024 * 1024) {
+      setState({ status: "error", message: photoTooLargeMessage(file.size) });
       return;
     }
     const fd = new FormData();
@@ -53,7 +58,6 @@ export function IdentifyField({ species }: { species: Species[] }) {
             type="file"
             name="photo"
             accept="image/*"
-            capture="environment"
             className="min-w-0 flex-1 text-sm text-[var(--color-muted)] file:mr-3 file:rounded-full file:border-0 file:bg-[var(--color-sage)] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[var(--color-forest)]"
           />
           <button
