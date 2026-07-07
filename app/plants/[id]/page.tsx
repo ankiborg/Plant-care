@@ -4,7 +4,6 @@ import {
   archivePlant,
   logCareWithNote,
   updatePlant,
-  uploadPhoto,
 } from "@/lib/actions";
 import {
   formatDate,
@@ -16,6 +15,7 @@ import {
 import { daysBetween, startOfUTCDay } from "@/lib/schedule";
 import { prisma } from "@/lib/prisma";
 import { PhotoGallery } from "./photo-gallery";
+import { PhotoUploadForm } from "./photo-upload-form";
 import { ArchiveButton } from "./archive-button";
 import { DiagnosePanel } from "./diagnose-panel";
 import { SubmitButton } from "../../submit-button";
@@ -188,28 +188,7 @@ export default async function PlantDetailPage({
         <h2 className="mb-3 text-base font-semibold text-[var(--color-ink)]">
           Photos
         </h2>
-        <form action={uploadPhoto} className="mb-4 space-y-2.5">
-          <input type="hidden" name="plantId" value={plant.id} />
-          <input
-            type="file"
-            name="photo"
-            accept="image/*"
-            capture="environment"
-            required
-            className="block w-full text-sm text-[var(--color-muted)] file:mr-3 file:rounded-full file:border-0 file:bg-[var(--color-sage)] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[var(--color-forest)]"
-          />
-          <div className="flex gap-2">
-            <input
-              name="note"
-              maxLength={120}
-              placeholder="Caption (optional)…"
-              className="field"
-            />
-            <SubmitButton className="btn btn-primary shrink-0" pendingText="Uploading…">
-              Upload
-            </SubmitButton>
-          </div>
-        </form>
+        <PhotoUploadForm plantId={plant.id} />
 
         <PhotoGallery
           photos={plant.photos.map((photo) => ({

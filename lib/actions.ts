@@ -75,44 +75,70 @@ export async function archivePlant(formData: FormData) {
   redirect("/plants");
 }
 
-// Uploads image bytes to Cloudinary and returns the hosted URL.
-async function uploadToCloudinary(file: File): Promise<string> {
+const CLOUDINARY_MISSING_MSG =
+  "Photo storage isn't configured — add the CLOUDINARY_URL variable in Railway (Cloudinary dashboard → API Keys → \"API environment variable\").";
+const CLOUDINARY_FAILED_MSG =
+  "Photo upload failed — the CLOUDINARY_URL value in Railway looks wrong. Re-copy it from the Cloudinary dashboard (cloudinary://KEY:SECRET@CLOUDNAME).";
+
+// Uploads image bytes to Cloudinary and returns the hosted URL, or a
+// user-showable error message. Never throws.
+async function uploadToCloudinary(
+  file: File
+): Promise<{ url: string } | { error: string }> {
   if (!process.env.CLOUDINARY_URL) {
-    throw new Error("CLOUDINARY_URL is not configured");
+    console.error("[upload] CLOUDINARY_URL is not set");
+    return { error: CLOUDINARY_MISSING_MSG };
   }
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const uploaded = await new Promise<{ secure_url: string }>(
-    (resolve, reject) => {
-      cloudinary.uploader
-        .upload_stream(
-          { folder: "plant-care", resource_type: "image" },
-          (error, result) => {
-            if (error || !result) reject(error ?? new Error("upload failed"));
-            else resolve(result);
-          }
-        )
-        .end(buffer);
-    }
-  );
-  return uploaded.secure_url;
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const uploaded = await new Promise<{ secure_url: string }>(
+      (resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream(
+            { folder: "plant-care", resource_type: "image" },
+            (error, result) => {
+              if (error || !result) reject(error ?? new Error("upload failed"));
+              else resolve(result);
+            }
+          )
+          .end(buffer);
+      }
+    );
+    return { url: uploaded.secure_url };
+  } catch (e) {
+    console.error("[upload] Cloudinary upload failed:", e);
+    return { error: CLOUDINARY_FAILED_MSG };
+  }
 }
 
-export async function uploadPhoto(formData: FormData) {
+export type UploadState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "done" };
+
+/** Upload a photo to a plant's gallery. Returns state instead of throwing. */
+export async function uploadPhotoAction(
+  formData: FormData
+): Promise<UploadState> {
   const plantId = String(formData.get("plantId"));
   const file = formData.get("photo");
-  if (!(file instanceof File) || file.size === 0) return;
+  if (!(file instanceof File) || file.size === 0) {
+    return { status: "error", message: "Choose a photo first." };
+  }
 
-  const url = await uploadToCloudinary(file);
+  const uploaded = await uploadToCloudinary(file);
+  if ("error" in uploaded) return { status: "error", message: uploaded.error };
 
   await prisma.plantPhoto.create({
     data: {
       plantId,
-      url,
+      url: uploaded.url,
       note: String(formData.get("note") ?? "").trim() || null,
     },
   });
   revalidatePath(`/plants/${plantId}`);
   revalidatePath("/plants");
+  return { status: "done" };
 }
 
 // --- AI photo recognition (Claude vision) ---
@@ -141,12 +167,9 @@ export async function identifyFromUpload(
     return { status: "error", message: "Choose a photo first." };
   }
 
-  let url: string;
-  try {
-    url = await uploadToCloudinary(file);
-  } catch {
-    return { status: "error", message: "Couldn't upload that photo." };
-  }
+  const uploaded = await uploadToCloudinary(file);
+  if ("error" in uploaded) return { status: "error", message: uploaded.error };
+  const url = uploaded.url;
 
   const species = await prisma.species.findMany({
     select: { id: true, commonName: true, scientificName: true },
