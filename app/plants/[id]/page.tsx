@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   archivePlant,
@@ -12,13 +13,13 @@ import {
   nextWaterFor,
   PlantWithRelations,
 } from "@/lib/care";
+import { daysBetween, startOfUTCDay } from "@/lib/schedule";
 import { prisma } from "@/lib/prisma";
 import { PhotoGallery } from "./photo-gallery";
+import { ArchiveButton } from "./archive-button";
+import { SubmitButton } from "../../submit-button";
 
 export const dynamic = "force-dynamic";
-
-const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 focus:border-green-600 focus:outline-none";
 
 const CARE_BUTTONS: { type: string; label: string }[] = [
   { type: "WATER", label: "💧 Water" },
@@ -37,6 +38,59 @@ const CARE_EMOJI: Record<string, string> = {
   CLEAN: "🧽",
   NOTE: "📝",
 };
+
+function relative(next: Date): string {
+  const days = daysBetween(startOfUTCDay(new Date()), next);
+  if (days < 0) return `${-days} day${days === -1 ? "" : "s"} overdue`;
+  if (days === 0) return "today";
+  if (days === 1) return "tomorrow";
+  return `in ${days} days`;
+}
+
+function StatCard({
+  label,
+  glyph,
+  date,
+  last,
+}: {
+  label: string;
+  glyph: string;
+  date: Date | null;
+  last?: Date;
+}) {
+  const overdue = date ? daysBetween(startOfUTCDay(new Date()), date) < 0 : false;
+  return (
+    <div className="card p-4">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-muted)]">
+        <span>{glyph}</span>
+        {label}
+      </p>
+      {date ? (
+        <>
+          <p className="mt-1.5 font-[family-name:var(--font-display)] text-lg font-semibold leading-tight text-[var(--color-ink)]">
+            {date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+          </p>
+          <p
+            className={`text-xs ${
+              overdue ? "font-semibold text-[var(--color-clay)]" : "text-[var(--color-faint)]"
+            }`}
+          >
+            {relative(date)}
+          </p>
+        </>
+      ) : (
+        <p className="mt-1.5 text-sm text-[var(--color-faint)]">Not needed</p>
+      )}
+      {date && last && (
+        <p className="mt-2 border-t border-[var(--color-line)] pt-2 text-[0.68rem] text-[var(--color-faint)]">
+          last {formatDate(last)}
+        </p>
+      )}
+    </div>
+  );
+}
+
+const SELECT = "field";
 
 export default async function PlantDetailPage({
   params,
@@ -59,45 +113,51 @@ export default async function PlantDetailPage({
   const nextFert = nextFertFor(plant);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{plant.nickname}</h1>
-        <p className="text-gray-500">
-          {plant.species.commonName}
-          {plant.species.scientificName && (
-            <span className="italic"> · {plant.species.scientificName}</span>
-          )}
-          {plant.species.toxicToPets && " · ⚠️ toxic to pets"}
-        </p>
-      </div>
+    <div className="space-y-6 pt-3">
+      <Link
+        href="/plants"
+        className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-muted)] hover:text-[var(--color-forest)]"
+      >
+        ← Plants
+      </Link>
 
-      {/* Next care dates */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-white p-4 shadow-sm">
-          <p className="text-sm text-gray-500">💧 Next watering</p>
-          <p className="text-lg font-semibold text-green-800">
-            {formatDate(nextWater)}
-          </p>
-          <p className="text-xs text-gray-400">
-            last: {formatDate(lastCareDate(plant, "WATER"))}
-          </p>
-        </div>
-        <div className="rounded-xl bg-white p-4 shadow-sm">
-          <p className="text-sm text-gray-500">🌱 Next fertilizing</p>
-          <p className="text-lg font-semibold text-green-800">
-            {nextFert ? formatDate(nextFert) : "never (species)"}
-          </p>
-          {nextFert && (
-            <p className="text-xs text-gray-400">
-              last: {formatDate(lastCareDate(plant, "FERTILIZE"))}
-            </p>
-          )}
-        </div>
+      {/* Hero */}
+      <header className="space-y-1.5">
+        <h1 className="text-[1.9rem] font-semibold leading-tight text-[var(--color-ink)]">
+          {plant.nickname}
+        </h1>
+        <p className="text-[0.95rem] text-[var(--color-muted)]">
+          <span className="italic">{plant.species.commonName}</span>
+          {plant.location && <span> · {plant.location}</span>}
+        </p>
+        {plant.species.toxicToPets && (
+          <span className="pill bg-[var(--color-clay-soft)] text-[var(--color-clay)]">
+            ⚠ Toxic to pets
+          </span>
+        )}
+      </header>
+
+      {/* Next care */}
+      <div className="grid grid-cols-2 gap-3.5">
+        <StatCard
+          label="Water"
+          glyph="💧"
+          date={nextWater}
+          last={lastCareDate(plant, "WATER")}
+        />
+        <StatCard
+          label="Fertilize"
+          glyph="🌱"
+          date={nextFert}
+          last={nextFert ? lastCareDate(plant, "FERTILIZE") : undefined}
+        />
       </div>
 
       {/* Log care */}
-      <section className="rounded-xl bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold">Log care</h2>
+      <section className="card p-5">
+        <h2 className="mb-3 text-base font-semibold text-[var(--color-ink)]">
+          Log care
+        </h2>
         <form action={logCareWithNote} className="space-y-3">
           <input type="hidden" name="plantId" value={plant.id} />
           <div className="grid grid-cols-3 gap-2">
@@ -107,7 +167,7 @@ export default async function PlantDetailPage({
                 type="submit"
                 name="type"
                 value={b.type}
-                className="rounded-lg bg-green-100 px-2 py-2 text-sm font-medium text-green-900 hover:bg-green-200"
+                className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-2.5 text-sm font-medium text-[var(--color-ink)] transition-colors hover:border-[var(--color-moss)] hover:bg-[var(--color-sage)]"
               >
                 {b.label}
               </button>
@@ -116,16 +176,18 @@ export default async function PlantDetailPage({
           <input
             name="note"
             maxLength={200}
-            placeholder="Optional note…"
-            className={inputClass}
+            placeholder="Add a note (optional)…"
+            className="field"
           />
         </form>
       </section>
 
-      {/* Photo timeline */}
-      <section className="rounded-xl bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold">Photos</h2>
-        <form action={uploadPhoto} className="mb-4 space-y-2">
+      {/* Photos */}
+      <section className="card p-5">
+        <h2 className="mb-3 text-base font-semibold text-[var(--color-ink)]">
+          Photos
+        </h2>
+        <form action={uploadPhoto} className="mb-4 space-y-2.5">
           <input type="hidden" name="plantId" value={plant.id} />
           <input
             type="file"
@@ -133,21 +195,18 @@ export default async function PlantDetailPage({
             accept="image/*"
             capture="environment"
             required
-            className="w-full text-sm"
+            className="block w-full text-sm text-[var(--color-muted)] file:mr-3 file:rounded-full file:border-0 file:bg-[var(--color-sage)] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[var(--color-forest)]"
           />
           <div className="flex gap-2">
             <input
               name="note"
               maxLength={120}
-              placeholder="Optional note…"
-              className={inputClass}
+              placeholder="Caption (optional)…"
+              className="field"
             />
-            <button
-              type="submit"
-              className="shrink-0 rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800"
-            >
+            <SubmitButton className="btn btn-primary shrink-0" pendingText="Uploading…">
               Upload
-            </button>
+            </SubmitButton>
           </div>
         </form>
 
@@ -161,96 +220,106 @@ export default async function PlantDetailPage({
         />
       </section>
 
-      {/* Edit attributes */}
-      <section className="rounded-xl bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold">Details</h2>
-        <form action={updatePlant} className="space-y-3">
+      {/* Details (progressive disclosure) */}
+      <details className="card group p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between text-base font-semibold text-[var(--color-ink)]">
+          Details
+          <span className="text-[var(--color-faint)] transition-transform group-open:rotate-180">
+            ⌄
+          </span>
+        </summary>
+        <form action={updatePlant} className="mt-4 space-y-4">
           <input type="hidden" name="plantId" value={plant.id} />
-          <label className="block text-sm font-medium">
-            Nickname
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium">Nickname</span>
             <input
               name="nickname"
               defaultValue={plant.nickname}
               required
               maxLength={60}
-              className={inputClass}
+              className="field"
             />
           </label>
-          <label className="block text-sm font-medium">
-            Location
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium">Location</span>
             <input
               name="location"
               defaultValue={plant.location ?? ""}
               maxLength={80}
-              className={inputClass}
+              className="field"
             />
           </label>
           <div className="grid grid-cols-3 gap-3">
-            <label className="block text-sm font-medium">
-              Pot size
-              <select name="potSize" defaultValue={plant.potSize} className={inputClass}>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium">Pot</span>
+              <select name="potSize" defaultValue={plant.potSize} className={SELECT}>
                 <option value="SMALL">Small</option>
                 <option value="MEDIUM">Medium</option>
                 <option value="LARGE">Large</option>
               </select>
             </label>
-            <label className="block text-sm font-medium">
-              Soil
-              <select name="soil" defaultValue={plant.soil} className={inputClass}>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium">Soil</span>
+              <select name="soil" defaultValue={plant.soil} className={SELECT}>
                 <option value="DRAINING">Draining</option>
                 <option value="STANDARD">Standard</option>
                 <option value="RETAINING">Retaining</option>
               </select>
             </label>
-            <label className="block text-sm font-medium">
-              Light
-              <select name="light" defaultValue={plant.light} className={inputClass}>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium">Light</span>
+              <select name="light" defaultValue={plant.light} className={SELECT}>
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
-                <option value="BRIGHT_INDIRECT">Bright indirect</option>
-                <option value="DIRECT">Direct sun</option>
+                <option value="BRIGHT_INDIRECT">Bright</option>
+                <option value="DIRECT">Direct</option>
               </select>
             </label>
           </div>
-          <button
-            type="submit"
-            className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800"
-          >
+          <SubmitButton className="btn btn-primary" pendingText="Saving…">
             Save changes
-          </button>
+          </SubmitButton>
         </form>
-      </section>
+      </details>
 
-      {/* Care history */}
-      <section className="rounded-xl bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold">Care history</h2>
+      {/* Care history (progressive disclosure) */}
+      <details className="card group p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between text-base font-semibold text-[var(--color-ink)]">
+          Care history
+          <span className="pill bg-[var(--color-surface-2)] text-[var(--color-muted)]">
+            {plant.logs.length}
+          </span>
+        </summary>
         {plant.logs.length === 0 ? (
-          <p className="text-sm text-gray-500">No care logged yet.</p>
+          <p className="mt-4 text-sm text-[var(--color-faint)]">
+            No care logged yet.
+          </p>
         ) : (
-          <ul className="divide-y divide-gray-100 text-sm">
+          <ul className="mt-4 space-y-0">
             {plant.logs.map((log) => (
-              <li key={log.id} className="flex justify-between gap-2 py-2">
-                <span>
-                  {CARE_EMOJI[log.type] ?? ""} {log.type.toLowerCase()}
-                  {log.note && <span className="text-gray-500"> — {log.note}</span>}
+              <li
+                key={log.id}
+                className="flex justify-between gap-3 border-b border-[var(--color-line)] py-2.5 text-sm last:border-0"
+              >
+                <span className="text-[var(--color-ink)]">
+                  {CARE_EMOJI[log.type] ?? ""}{" "}
+                  <span className="capitalize">{log.type.toLowerCase()}</span>
+                  {log.note && (
+                    <span className="text-[var(--color-muted)]"> — {log.note}</span>
+                  )}
                 </span>
-                <span className="shrink-0 text-gray-400">
+                <span className="shrink-0 text-[var(--color-faint)]">
                   {formatDate(log.doneAt)}
                 </span>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </details>
 
-      <form action={archivePlant}>
+      <form action={archivePlant} className="pt-1 text-center">
         <input type="hidden" name="plantId" value={plant.id} />
-        <button
-          type="submit"
-          className="text-sm text-gray-400 underline hover:text-red-600"
-        >
-          Archive this plant
-        </button>
+        <ArchiveButton />
       </form>
     </div>
   );

@@ -1,10 +1,9 @@
+import Link from "next/link";
 import { createPlant } from "@/lib/actions";
 import { prisma } from "@/lib/prisma";
+import { SubmitButton } from "../../submit-button";
 
 export const dynamic = "force-dynamic";
-
-const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 focus:border-green-600 focus:outline-none";
 
 export default async function NewPlantPage() {
   const species = await prisma.species.findMany({
@@ -12,74 +11,81 @@ export default async function NewPlantPage() {
   });
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Add plant</h1>
+    <div className="space-y-6 pt-3">
+      <header className="space-y-1">
+        <h1 className="text-[2rem] font-semibold leading-none text-[var(--color-ink)]">
+          Add a plant
+        </h1>
+        <p className="text-[0.95rem] text-[var(--color-muted)]">
+          Pick a species and we&apos;ll set a sensible care schedule.
+        </p>
+      </header>
 
       {species.length === 0 && (
-        <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="card px-4 py-3 text-sm text-[var(--color-clay)]">
           The species list is empty — run <code>npm run seed</code> first.
         </p>
       )}
 
-      <form action={createPlant} className="space-y-4 rounded-xl bg-white p-4 shadow-sm">
-        <label className="block text-sm font-medium">
-          Species
-          <select name="speciesId" required className={inputClass}>
+      <form action={createPlant} className="card space-y-5 p-5">
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium text-[var(--color-ink)]">Species</span>
+          <select name="speciesId" required className="field">
             {species.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.commonName}
-                {s.scientificName ? ` (${s.scientificName})` : ""}
-                {s.toxicToPets ? " ⚠️ toxic to pets" : ""}
+                {s.scientificName ? ` — ${s.scientificName}` : ""}
+                {s.toxicToPets ? "  (toxic to pets)" : ""}
               </option>
             ))}
           </select>
         </label>
 
-        <label className="block text-sm font-medium">
-          Nickname
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium text-[var(--color-ink)]">Nickname</span>
           <input
             name="nickname"
             required
             maxLength={60}
-            placeholder="e.g. Monstera by the sofa"
-            className={inputClass}
+            placeholder="Monstera by the sofa"
+            className="field"
           />
         </label>
 
-        <label className="block text-sm font-medium">
-          Location
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium text-[var(--color-ink)]">
+            Location <span className="text-[var(--color-faint)]">· optional</span>
+          </span>
           <input
             name="location"
             maxLength={80}
-            placeholder="e.g. Living room, east window"
-            className={inputClass}
+            placeholder="Living room, east window"
+            className="field"
           />
         </label>
 
         <div className="grid grid-cols-3 gap-3">
-          <label className="block text-sm font-medium">
-            Pot size
-            <select name="potSize" defaultValue="MEDIUM" className={inputClass}>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-[var(--color-ink)]">Pot</span>
+            <select name="potSize" defaultValue="MEDIUM" className="field">
               <option value="SMALL">Small</option>
               <option value="MEDIUM">Medium</option>
               <option value="LARGE">Large</option>
             </select>
           </label>
-
-          <label className="block text-sm font-medium">
-            Soil
-            <select name="soil" defaultValue="" className={inputClass}>
-              <option value="">Species default</option>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-[var(--color-ink)]">Soil</span>
+            <select name="soil" defaultValue="" className="field">
+              <option value="">Default</option>
               <option value="DRAINING">Draining</option>
               <option value="STANDARD">Standard</option>
               <option value="RETAINING">Retaining</option>
             </select>
           </label>
-
-          <label className="block text-sm font-medium">
-            Light
-            <select name="light" defaultValue="" className={inputClass}>
-              <option value="">Species default</option>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-[var(--color-ink)]">Light</span>
+            <select name="light" defaultValue="" className="field">
+              <option value="">Default</option>
               <option value="LOW">Low</option>
               <option value="MEDIUM">Medium</option>
               <option value="BRIGHT_INDIRECT">Bright indirect</option>
@@ -88,12 +94,17 @@ export default async function NewPlantPage() {
           </label>
         </div>
 
-        <button
-          type="submit"
-          className="w-full rounded-lg bg-green-700 px-4 py-3 font-semibold text-white hover:bg-green-800"
-        >
-          Add plant
-        </button>
+        <div className="flex items-center gap-3 pt-1">
+          <SubmitButton
+            className="btn btn-primary flex-1 py-3"
+            pendingText="Adding…"
+          >
+            Add plant
+          </SubmitButton>
+          <Link href="/plants" className="btn btn-ghost">
+            Cancel
+          </Link>
+        </div>
       </form>
     </div>
   );

@@ -1,16 +1,33 @@
 import type { Metadata, Viewport } from "next";
-import Link from "next/link";
+import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 import { RegisterServiceWorker } from "./register-sw";
+import { TabBar, TopBar } from "./nav";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Plant Care",
-  description: "Personal plant care scheduler",
-  appleWebApp: { capable: true, title: "Plant Care", statusBarStyle: "default" },
+  title: "Fern — plant care",
+  description: "A calm home for your plants.",
+  appleWebApp: { capable: true, title: "Fern", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#166534",
+  themeColor: "#1f4732",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -19,31 +36,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-green-50 text-gray-900 antialiased">
+    <html lang="en" className={`${fraunces.variable} ${inter.variable}`}>
+      <body className="min-h-screen">
         <RegisterServiceWorker />
-        <div className="mx-auto max-w-2xl px-4 pb-24">
-          <header className="flex items-center justify-between py-4">
-            <Link href="/" className="text-xl font-bold text-green-800">
-              🪴 Plant Care
-            </Link>
-            <nav className="flex gap-4 text-sm font-medium text-green-700">
-              <Link href="/" className="hover:underline">
-                Today
-              </Link>
-              <Link href="/plants" className="hover:underline">
-                Plants
-              </Link>
-              <Link
-                href="/plants/new"
-                className="rounded-full bg-green-700 px-3 py-1 text-white hover:bg-green-800"
-              >
-                + Add
-              </Link>
-            </nav>
-          </header>
-          <main>{children}</main>
-        </div>
+        <TopBar />
+        <main className="mx-auto max-w-xl px-5 pb-28 pt-2">{children}</main>
+        <TabBar />
       </body>
     </html>
   );

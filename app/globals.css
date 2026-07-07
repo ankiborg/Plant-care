@@ -1,1 +1,127 @@
 @import "tailwindcss";
+
+@theme {
+  /* Warm, editorial botanical palette */
+  --color-canvas: #f5f3ec; /* warm paper */
+  --color-surface: #fffdf9; /* card */
+  --color-surface-2: #efece2; /* sunken */
+  --color-ink: #1a2a20; /* near-black green */
+  --color-muted: #5f6b5c; /* sage-gray text */
+  --color-faint: #8a9384; /* faintest text */
+  --color-line: #e4e0d4; /* hairline border */
+
+  --color-forest: #1f4732; /* primary deep green */
+  --color-forest-hover: #285a40;
+  --color-moss: #6f9b74; /* accent */
+  --color-sage: #dfe8dc; /* soft green fill */
+  --color-clay: #b15a34; /* terracotta — overdue */
+  --color-clay-soft: #f4e3d8;
+  --color-honey: #a9761a; /* amber — due today */
+  --color-honey-soft: #f6ead0;
+
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-xl: 1.1rem;
+  --shadow-card: 0 1px 2px rgba(26, 42, 32, 0.04), 0 6px 20px rgba(26, 42, 32, 0.06);
+  --shadow-soft: 0 1px 2px rgba(26, 42, 32, 0.05);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  /* Larger, comfortable tap targets on mobile inputs */
+  input,
+  select,
+  button {
+    font-family: inherit;
+  }
+  ::selection {
+    background: var(--color-sage);
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card);
+  }
+  .field {
+    width: 100%;
+    border-radius: 0.7rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    padding: 0.6rem 0.8rem;
+    /* 16px keeps mobile Safari from auto-zooming when a field is focused */
+    font-size: 1rem;
+    color: var(--color-ink);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-moss);
+    box-shadow: 0 0 0 3px var(--color-sage);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.6rem 1.1rem;
+    transition: background-color 0.15s, transform 0.05s, box-shadow 0.15s;
+    cursor: pointer;
+  }
+  .btn:active {
+    transform: translateY(0.5px);
+  }
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  .btn-primary {
+    background: var(--color-forest);
+    color: #fbfdf8;
+    box-shadow: var(--shadow-soft);
+  }
+  .btn-primary:hover {
+    background: var(--color-forest-hover);
+  }
+  .btn-ghost {
+    background: var(--color-sage);
+    color: var(--color-forest);
+  }
+  .btn-ghost:hover {
+    background: #d3e0cf;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0.2rem 0.6rem;
+    white-space: nowrap;
+  }
+}
