@@ -14,6 +14,8 @@ import {
 } from "@/lib/care";
 import { daysBetween, startOfUTCDay } from "@/lib/schedule";
 import { prisma } from "@/lib/prisma";
+import { speciesArt } from "@/lib/species-art";
+import { LocationField } from "../../location-field";
 import { PhotoGallery } from "./photo-gallery";
 import { PhotoUploadForm } from "./photo-upload-form";
 import { ArchiveButton } from "./archive-button";
@@ -110,6 +112,16 @@ export default async function PlantDetailPage({
 
   if (!plant || plant.archived) notFound();
 
+  const locationRows = await prisma.plant.findMany({
+    where: { archived: false, location: { not: null } },
+    select: { location: true },
+    distinct: ["location"],
+    orderBy: { location: "asc" },
+  });
+  const locations = locationRows
+    .map((r) => r.location)
+    .filter((l): l is string => Boolean(l));
+
   const nextWater = nextWaterFor(plant);
   const nextFert = nextFertFor(plant);
 
@@ -123,19 +135,27 @@ export default async function PlantDetailPage({
       </Link>
 
       {/* Hero */}
-      <header className="space-y-1.5">
-        <h1 className="text-[1.9rem] font-semibold leading-tight text-[var(--color-ink)]">
-          {plant.nickname}
-        </h1>
-        <p className="text-[0.95rem] text-[var(--color-muted)]">
-          <span className="italic">{plant.species.commonName}</span>
-          {plant.location && <span> · {plant.location}</span>}
-        </p>
-        {plant.species.toxicToPets && (
-          <span className="pill bg-[var(--color-clay-soft)] text-[var(--color-clay)]">
-            ⚠ Toxic to pets
-          </span>
-        )}
+      <header className="flex items-center gap-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={plant.photos[0]?.url ?? speciesArt(plant.species.commonName)}
+          alt=""
+          className="h-20 w-20 shrink-0 rounded-2xl object-cover shadow-[0_4px_14px_rgba(26,42,32,0.12)]"
+        />
+        <div className="min-w-0 space-y-1.5">
+          <h1 className="text-[1.9rem] font-semibold leading-tight text-[var(--color-ink)]">
+            {plant.nickname}
+          </h1>
+          <p className="text-[0.95rem] text-[var(--color-muted)]">
+            <span className="italic">{plant.species.commonName}</span>
+            {plant.location && <span> · {plant.location}</span>}
+          </p>
+          {plant.species.toxicToPets && (
+            <span className="pill bg-[var(--color-clay-soft)] text-[var(--color-clay)]">
+              ⚠ Toxic to pets
+            </span>
+          )}
+        </div>
       </header>
 
       {/* Next care */}
@@ -224,11 +244,9 @@ export default async function PlantDetailPage({
           </label>
           <label className="block space-y-1.5">
             <span className="text-sm font-medium">Location</span>
-            <input
-              name="location"
+            <LocationField
+              locations={locations}
               defaultValue={plant.location ?? ""}
-              maxLength={80}
-              className="field"
             />
           </label>
           <div className="grid grid-cols-3 gap-3">

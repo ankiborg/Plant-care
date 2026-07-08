@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#e3ebdf"/>
+  <circle cx="100" cy="92" r="74" fill="#eef3ea"/>
+  <path d="M92 148C84 128 78 112 84 96" fill="none" stroke="#6f9b74" stroke-width="4" stroke-linecap="round"/>
+  <path d="M124 150C148 146 158 124 156 100C155 84 146 72 132 64" fill="none" stroke="#6f9b74" stroke-width="4" stroke-linecap="round"/>
+  <path d="M76 146C68 134 62 124 58 116" fill="none" stroke="#6f9b74" stroke-width="3.5" stroke-linecap="round"/>
+  <g transform="translate(84 82) rotate(8) scale(1)">
+    <path d="M0 -10C7 -20 22 -14 20 -1C18 9 8 16 0 22C-8 16 -18 9 -20 -1C-22 -14 -7 -20 0 -10Z" fill="#2c5a40"/>
+  </g>
+  <g transform="translate(150 104) rotate(18) scale(0.85)">
+    <path d="M0 -10C7 -20 22 -14 20 -1C18 9 8 16 0 22C-8 16 -18 9 -20 -1C-22 -14 -7 -20 0 -10Z" fill="#2c5a40"/>
+  </g>
+  <g transform="translate(130 52) rotate(-16) scale(0.8)">
+    <path d="M0 -10C7 -20 22 -14 20 -1C18 9 8 16 0 22C-8 16 -18 9 -20 -1C-22 -14 -7 -20 0 -10Z" fill="#2c5a40"/>
+  </g>
+  <g transform="translate(58 106) rotate(-14) scale(0.8)">
+    <path d="M0 -10C7 -20 22 -14 20 -1C18 9 8 16 0 22C-8 16 -18 9 -20 -1C-22 -14 -7 -20 0 -10Z" fill="#6f9b74"/>
+  </g>
+  <g transform="translate(104 132) rotate(4) scale(0.7)">
+    <path d="M0 -10C7 -20 22 -14 20 -1C18 9 8 16 0 22C-8 16 -18 9 -20 -1C-22 -14 -7 -20 0 -10Z" fill="#6f9b74"/>
+  </g>
+<ellipse cx="100" cy="151" rx="26" ry="4" fill="#54402f"/>
+  <path d="M68 155h64l-7.04 27a8 8 0 0 1-8 7H83.04a8 8 0 0 1-8-7z" fill="#b15a34"/>
+  <rect x="63" y="147" width="74" height="13" rx="6.5" fill="#c96f47"/>
+</svg>
