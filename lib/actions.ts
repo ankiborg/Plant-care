@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { v2 as cloudinary } from "cloudinary";
 import { prisma } from "./prisma";
+import { MAX_PHOTO_MB, photoTooLargeMessage } from "./photo-limits";
 
 export async function logCare(plantId: string, type: CareType, note?: string) {
   await prisma.careLog.create({
@@ -125,6 +126,9 @@ export async function uploadPhotoAction(
   if (!(file instanceof File) || file.size === 0) {
     return { status: "error", message: "Choose a photo first." };
   }
+  if (file.size > MAX_PHOTO_MB * 1024 * 1024) {
+    return { status: "error", message: photoTooLargeMessage(file.size) };
+  }
 
   const uploaded = await uploadToCloudinary(file);
   if ("error" in uploaded) return { status: "error", message: uploaded.error };
@@ -165,6 +169,9 @@ export async function identifyFromUpload(
   const file = formData.get("photo");
   if (!(file instanceof File) || file.size === 0) {
     return { status: "error", message: "Choose a photo first." };
+  }
+  if (file.size > MAX_PHOTO_MB * 1024 * 1024) {
+    return { status: "error", message: photoTooLargeMessage(file.size) };
   }
 
   const uploaded = await uploadToCloudinary(file);

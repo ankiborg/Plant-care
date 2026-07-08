@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { uploadPhotoAction, UploadState } from "@/lib/actions";
+import { MAX_PHOTO_MB, photoTooLargeMessage } from "@/lib/photo-limits";
 
 export function PhotoUploadForm({ plantId }: { plantId: string }) {
   const router = useRouter();
@@ -11,6 +12,11 @@ export function PhotoUploadForm({ plantId }: { plantId: string }) {
   const [state, setState] = useState<UploadState>({ status: "idle" });
 
   function submit(formData: FormData) {
+    const file = formData.get("photo");
+    if (file instanceof File && file.size > MAX_PHOTO_MB * 1024 * 1024) {
+      setState({ status: "error", message: photoTooLargeMessage(file.size) });
+      return;
+    }
     startTransition(async () => {
       const result = await uploadPhotoAction(formData);
       setState(result);
@@ -28,7 +34,6 @@ export function PhotoUploadForm({ plantId }: { plantId: string }) {
         type="file"
         name="photo"
         accept="image/*"
-        capture="environment"
         required
         className="block w-full text-sm text-[var(--color-muted)] file:mr-3 file:rounded-full file:border-0 file:bg-[var(--color-sage)] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[var(--color-forest)]"
       />
