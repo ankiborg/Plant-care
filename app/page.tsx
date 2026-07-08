@@ -1,7 +1,9 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { markDone } from "@/lib/actions";
 import { dueTasksFor, PlantWithRelations } from "@/lib/care";
 import { prisma } from "@/lib/prisma";
+import { speciesArt } from "@/lib/species-art";
 import { SubmitButton } from "./submit-button";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +65,11 @@ function statusPill(daysOverdue: number) {
 export default async function TodayPage() {
   const plants = (await prisma.plant.findMany({
     where: { archived: false },
-    include: { species: true, logs: true, photos: true },
+    include: {
+      species: true,
+      logs: true,
+      photos: { orderBy: { takenAt: "desc" }, take: 1 },
+    },
   })) as PlantWithRelations[];
 
   const rows: TodayRow[] = [];
@@ -146,9 +152,14 @@ export default async function TodayPage() {
                         href={`/plants/${row.plant.id}`}
                         className="flex min-w-0 flex-1 items-center gap-3"
                       >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-sage)] text-[var(--color-forest)]">
-                          <group.Glyph />
-                        </span>
+                        <img
+                          src={
+                            row.plant.photos[0]?.url ??
+                            speciesArt(row.plant.species.commonName)
+                          }
+                          alt=""
+                          className="h-11 w-11 shrink-0 rounded-full object-cover"
+                        />
                         <span className="min-w-0">
                           <span className="block truncate font-semibold text-[var(--color-ink)]">
                             {row.plant.nickname}

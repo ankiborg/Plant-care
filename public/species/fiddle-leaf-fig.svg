@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#e3ebdf"/>
+  <circle cx="100" cy="92" r="74" fill="#eef3ea"/>
+  <path d="M100 152C100 120 100 84 100 46" fill="none" stroke="#8a6a4f" stroke-width="5" stroke-linecap="round"/>
+  <g transform="translate(72 112) rotate(-30)"><ellipse rx="13" ry="26" fill="#2c5a40"/><path d="M0 21V-21" stroke="#6f9b74" stroke-width="2.5"/></g>
+  <g transform="translate(130 102) rotate(32)"><ellipse rx="13" ry="26" fill="#6f9b74"/><path d="M0 21V-21" stroke="#eef3ea" stroke-width="2.5"/></g>
+  <g transform="translate(70 62) rotate(-36)"><ellipse rx="12" ry="24" fill="#6f9b74"/><path d="M0 19V-19" stroke="#eef3ea" stroke-width="2.5"/></g>
+  <g transform="translate(128 54) rotate(30)"><ellipse rx="12" ry="24" fill="#2c5a40"/><path d="M0 19V-19" stroke="#6f9b74" stroke-width="2.5"/></g>
+  <g transform="translate(100 34)"><ellipse rx="13" ry="25" fill="#2c5a40"/><path d="M0 20V-20" stroke="#6f9b74" stroke-width="2.5"/></g>
+<ellipse cx="100" cy="151" rx="26" ry="4" fill="#54402f"/>
+  <path d="M68 155h64l-7.04 27a8 8 0 0 1-8 7H83.04a8 8 0 0 1-8-7z" fill="#b15a34"/>
+  <rect x="63" y="147" width="74" height="13" rx="6.5" fill="#c96f47"/>
+</svg>

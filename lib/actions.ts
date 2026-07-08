@@ -46,6 +46,19 @@ export async function createPlant(formData: FormData) {
     },
   });
 
+  // If a photo was used to identify this plant, keep it as the first
+  // gallery photo. Only accept our own Cloudinary URLs.
+  const identifyPhotoUrl = String(formData.get("identifyPhotoUrl") ?? "");
+  if (identifyPhotoUrl.startsWith("https://res.cloudinary.com/")) {
+    await prisma.plantPhoto.create({
+      data: {
+        plantId: plant.id,
+        url: identifyPhotoUrl,
+        note: "Identification photo",
+      },
+    });
+  }
+
   revalidatePath("/plants");
   revalidatePath("/");
   redirect(`/plants/${plant.id}`);
@@ -156,6 +169,7 @@ export type IdentifyState =
       matchedName: string | null;
       guess: string;
       confidence: "high" | "medium" | "low";
+      photoUrl: string;
     };
 
 /**
@@ -197,6 +211,7 @@ export async function identifyFromUpload(
     matchedName: matched?.commonName ?? null,
     guess: result.guessCommonName || result.guessScientificName || "Unknown",
     confidence: result.confidence,
+    photoUrl: url,
   };
 }
 

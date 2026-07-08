@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createPlant } from "@/lib/actions";
 import { prisma } from "@/lib/prisma";
+import { speciesArt } from "@/lib/species-art";
+import { LocationField } from "../../location-field";
 import { SubmitButton } from "../../submit-button";
 import { IdentifyField } from "./identify-field";
 
@@ -10,6 +12,15 @@ export default async function NewPlantPage() {
   const species = await prisma.species.findMany({
     orderBy: { commonName: "asc" },
   });
+  const locationRows = await prisma.plant.findMany({
+    where: { archived: false, location: { not: null } },
+    select: { location: true },
+    distinct: ["location"],
+    orderBy: { location: "asc" },
+  });
+  const locations = locationRows
+    .map((r) => r.location)
+    .filter((l): l is string => Boolean(l));
 
   return (
     <div className="space-y-6 pt-3">
@@ -35,6 +46,7 @@ export default async function NewPlantPage() {
             commonName: s.commonName,
             scientificName: s.scientificName,
             toxicToPets: s.toxicToPets,
+            art: speciesArt(s.commonName),
           }))}
         />
 
@@ -53,12 +65,7 @@ export default async function NewPlantPage() {
           <span className="text-sm font-medium text-[var(--color-ink)]">
             Location <span className="text-[var(--color-faint)]">· optional</span>
           </span>
-          <input
-            name="location"
-            maxLength={80}
-            placeholder="Living room, east window"
-            className="field"
-          />
+          <LocationField locations={locations} />
         </label>
 
         <div className="grid grid-cols-3 gap-3">

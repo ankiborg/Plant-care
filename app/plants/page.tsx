@@ -3,6 +3,7 @@ import Link from "next/link";
 import { nextWaterFor, PlantWithRelations } from "@/lib/care";
 import { daysBetween, startOfUTCDay } from "@/lib/schedule";
 import { prisma } from "@/lib/prisma";
+import { speciesArt } from "@/lib/species-art";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +28,13 @@ const dotClass = {
   late: "bg-[var(--color-clay)]",
 };
 
-export default async function PlantsPage() {
-  const plants = (await prisma.plant.findMany({
+export default async function PlantsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ room?: string }>;
+}) {
+  const { room } = await searchParams;
+  const allPlants = (await prisma.plant.findMany({
     where: { archived: false },
     include: {
       species: true,
@@ -38,6 +44,22 @@ export default async function PlantsPage() {
     orderBy: { nickname: "asc" },
   })) as PlantWithRelations[];
 
+  const rooms = [
+    ...new Set(
+      allPlants
+        .map((p) => p.location)
+        .filter((l): l is string => Boolean(l))
+    ),
+  ].sort((a, b) => a.localeCompare(b, "sv"));
+
+  const activeRoom = room && rooms.includes(room) ? room : null;
+  const plants = activeRoom
+    ? allPlants.filter((p) => p.location === activeRoom)
+    : allPlants;
+
+  const chipBase =
+    "pill shrink-0 whitespace-nowrap px-3.5 py-1.5 text-[0.8rem] transition-colors";
+
   return (
     <div className="space-y-6 pt-3">
       <header className="flex items-end justify-between">
@@ -46,15 +68,48 @@ export default async function PlantsPage() {
             Plants
           </h1>
           <p className="text-[0.95rem] text-[var(--color-muted)]">
-            {plants.length === 0
+            {allPlants.length === 0
               ? "Your collection starts here."
-              : `${plants.length} in your care`}
+              : activeRoom
+                ? `${plants.length} in ${activeRoom}`
+                : `${allPlants.length} in your care`}
           </p>
         </div>
         <Link href="/plants/new" className="btn btn-ghost">
           + Add
         </Link>
       </header>
+
+      {rooms.length > 0 && (
+        <nav
+          aria-label="Filter by place"
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+        >
+          <Link
+            href="/plants"
+            className={`${chipBase} ${
+              !activeRoom
+                ? "bg-[var(--color-forest)] text-[var(--color-canvas)]"
+                : "bg-[var(--color-surface)] text-[var(--color-muted)] border border-[var(--color-line)]"
+            }`}
+          >
+            All
+          </Link>
+          {rooms.map((r) => (
+            <Link
+              key={r}
+              href={`/plants?room=${encodeURIComponent(r)}`}
+              className={`${chipBase} ${
+                activeRoom === r
+                  ? "bg-[var(--color-forest)] text-[var(--color-canvas)]"
+                  : "bg-[var(--color-surface)] text-[var(--color-muted)] border border-[var(--color-line)]"
+              }`}
+            >
+              {r}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       {plants.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
@@ -79,17 +134,11 @@ export default async function PlantsPage() {
                   className="card group block overflow-hidden transition-shadow hover:shadow-[0_10px_30px_rgba(26,42,32,0.10)]"
                 >
                   <div className="relative aspect-[4/5] overflow-hidden bg-[var(--color-sage)]">
-                    {plant.photos[0] ? (
-                      <img
-                        src={plant.photos[0].url}
-                        alt={plant.nickname}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-4xl opacity-70">
-                        🪴
-                      </div>
-                    )}
+                    <img
+                      src={plant.photos[0]?.url ?? speciesArt(plant.species.commonName)}
+                      alt={plant.nickname}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                    />
                   </div>
                   <div className="space-y-1 p-3">
                     <p className="truncate font-[family-name:var(--font-display)] text-[0.98rem] font-semibold leading-tight text-[var(--color-ink)]">

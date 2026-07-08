@@ -9,6 +9,7 @@ interface Species {
   commonName: string;
   scientificName: string | null;
   toxicToPets: boolean;
+  art: string;
 }
 
 const confidenceLabel = {
@@ -22,6 +23,7 @@ export function IdentifyField({ species }: { species: Species[] }) {
   const [pending, startTransition] = useTransition();
   const [state, setState] = useState<IdentifyState>({ status: "idle" });
   const [speciesId, setSpeciesId] = useState(species[0]?.id ?? "");
+  const selected = species.find((s) => s.id === speciesId);
 
   function identify() {
     const file = fileRef.current?.files?.[0];
@@ -95,24 +97,37 @@ export function IdentifyField({ species }: { species: Species[] }) {
         )}
       </div>
 
+      {/* Keep the identify photo so createPlant can attach it to the plant */}
+      {state.status === "done" && (
+        <input type="hidden" name="identifyPhotoUrl" value={state.photoUrl} />
+      )}
+
       {/* Species selection (part of the create-plant form) */}
       <label className="block space-y-1.5">
         <span className="text-sm font-medium text-[var(--color-ink)]">Species</span>
-        <select
-          name="speciesId"
-          required
-          value={speciesId}
-          onChange={(e) => setSpeciesId(e.target.value)}
-          className="field"
-        >
-          {species.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.commonName}
-              {s.scientificName ? ` — ${s.scientificName}` : ""}
-              {s.toxicToPets ? "  (toxic to pets)" : ""}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={selected?.art ?? "/species/generic.svg"}
+            alt=""
+            className="h-14 w-14 shrink-0 rounded-xl"
+          />
+          <select
+            name="speciesId"
+            required
+            value={speciesId}
+            onChange={(e) => setSpeciesId(e.target.value)}
+            className="field"
+          >
+            {species.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.commonName}
+                {s.scientificName ? ` — ${s.scientificName}` : ""}
+                {s.toxicToPets ? "  (toxic to pets)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
       </label>
     </div>
   );

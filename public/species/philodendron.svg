@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#e3ebdf"/>
+  <circle cx="100" cy="92" r="74" fill="#eef3ea"/>
+  <path d="M96 150C80 134 62 112 58 78" fill="none" stroke="#2c5a40" stroke-width="4" stroke-linecap="round"/>
+  <path d="M108 150C124 132 138 110 138 72" fill="none" stroke="#2c5a40" stroke-width="4" stroke-linecap="round"/>
+  <path d="M100 150C100 122 100 84 100 48" fill="none" stroke="#2c5a40" stroke-width="4" stroke-linecap="round"/>
+  <g transform="translate(58 94) rotate(-10) scale(1.15)">
+    <path d="M0 -10C7 -20 22 -14 20 -1C18 9 8 16 0 22C-8 16 -18 9 -20 -1C-22 -14 -7 -20 0 -10Z" fill="#1f4732"/>
+  </g>
+  <g transform="translate(138 88) rotate(10) scale(1.05)">
+    <path d="M0 -10C7 -20 22 -14 20 -1C18 9 8 16 0 22C-8 16 -18 9 -20 -1C-22 -14 -7 -20 0 -10Z" fill="#2c5a40"/>
+  </g>
+  <g transform="translate(100 64) rotate(0) scale(1.25)">
+    <path d="M0 -10C7 -20 22 -14 20 -1C18 9 8 16 0 22C-8 16 -18 9 -20 -1C-22 -14 -7 -20 0 -10Z" fill="#2c5a40"/>
+  </g>
+<ellipse cx="100" cy="151" rx="26" ry="4" fill="#54402f"/>
+  <path d="M68 155h64l-7.04 27a8 8 0 0 1-8 7H83.04a8 8 0 0 1-8-7z" fill="#b15a34"/>
+  <rect x="63" y="147" width="74" height="13" rx="6.5" fill="#c96f47"/>
+</svg>
