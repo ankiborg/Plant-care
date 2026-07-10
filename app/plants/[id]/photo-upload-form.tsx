@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { uploadPhotoAction, UploadState } from "@/lib/actions";
+import { prepareImageForUpload } from "@/lib/image-resize";
 import { MAX_PHOTO_MB, photoTooLargeMessage } from "@/lib/photo-limits";
 
 export function PhotoUploadForm({ plantId }: { plantId: string }) {
@@ -12,12 +13,20 @@ export function PhotoUploadForm({ plantId }: { plantId: string }) {
   const [state, setState] = useState<UploadState>({ status: "idle" });
 
   function submit(formData: FormData) {
-    const file = formData.get("photo");
-    if (file instanceof File && file.size > MAX_PHOTO_MB * 1024 * 1024) {
-      setState({ status: "error", message: photoTooLargeMessage(file.size) });
-      return;
-    }
     startTransition(async () => {
+      // Oversized photos are downscaled in the browser instead of rejected.
+      const file = formData.get("photo");
+      if (file instanceof File && file.size > 0) {
+        const prepared = await prepareImageForUpload(file);
+        if (prepared.size > MAX_PHOTO_MB * 1024 * 1024) {
+          setState({
+            status: "error",
+            message: photoTooLargeMessage(prepared.size),
+          });
+          return;
+        }
+        formData.set("photo", prepared);
+      }
       const result = await uploadPhotoAction(formData);
       setState(result);
       if (result.status === "done") {

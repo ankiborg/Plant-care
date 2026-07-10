@@ -46,6 +46,13 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
   ranked ID, prose fields default Swedish via `InfoLanguage` param), JSON-schema
   output, returns `{error}` instead of throwing. Tests mock `@anthropic-ai/sdk`
   and need `vi.resetModules()` (module caches the client).
+- `lib/image-resize.ts` — client-side downscaling of oversized photos (>7 MB →
+  2048px JPEG) before upload, used by all three photo inputs (identify,
+  add-plant identify, gallery). Files under the threshold pass through
+  untouched; undecodable files fall back to the original + normal size check.
+- `app/identify/identify-loading.tsx` — animated sprout + rotating quips
+  (`LOADING_MESSAGES`, English) shown while identification runs; keyframes in
+  globals.css, honors `prefers-reduced-motion`.
 - `lib/wikipedia.ts` — pure helpers for example photos on `/identify`: summary
   URL builder + image extraction. Fetched client-side (sv → en fallback,
   illustrated SVG as last resort); sandbox blocks Wikimedia so only the

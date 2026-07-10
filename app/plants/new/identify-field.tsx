@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { identifyFromUpload, IdentifyState } from "@/lib/actions";
+import { prepareImageForUpload } from "@/lib/image-resize";
 import { MAX_PHOTO_MB, photoTooLargeMessage } from "@/lib/photo-limits";
 
 interface Species {
@@ -39,13 +40,18 @@ export function IdentifyField({
       setState({ status: "error", message: "Choose a photo first." });
       return;
     }
-    if (file.size > MAX_PHOTO_MB * 1024 * 1024) {
-      setState({ status: "error", message: photoTooLargeMessage(file.size) });
-      return;
-    }
-    const fd = new FormData();
-    fd.set("photo", file);
     startTransition(async () => {
+      // Oversized photos are downscaled in the browser instead of rejected.
+      const prepared = await prepareImageForUpload(file);
+      if (prepared.size > MAX_PHOTO_MB * 1024 * 1024) {
+        setState({
+          status: "error",
+          message: photoTooLargeMessage(prepared.size),
+        });
+        return;
+      }
+      const fd = new FormData();
+      fd.set("photo", prepared);
       const result = await identifyFromUpload(fd);
       setState(result);
       if (result.status === "done" && result.matchedSpeciesId) {
