@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "prisma migrate deploy && (npm run seed || echo 'seed failed - starting anyway') && next start",
+    "start:web": "next start",
     "test": "vitest run",
     "seed": "tsx --env-file-if-exists=.env prisma/seed.ts",
     "postinstall": "prisma generate"

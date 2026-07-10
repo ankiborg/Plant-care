@@ -9,8 +9,10 @@ Swedish; reply in the language she uses. App UI text is English.
 - Develop on branch `claude/plant-app-build-error-0pl2q7`, push there only.
 - **Never merge or push to main** — Annika merges PRs herself in the GitHub UI
   (saves credits). Just push the branch and tell her to merge.
-- Railway auto-deploys main on merge. She runs `npm run seed` from her PC when
-  the seed changes (server DB isn't reachable from the sandbox).
+- Railway auto-deploys main on merge. `npm start` runs
+  `prisma migrate deploy` + the seed before `next start`, so migrations and
+  seed updates apply automatically on every deploy (seed is idempotent —
+  upserts by commonName). No manual seeding needed.
 - Verify before pushing: `npx vitest run` (21+ tests), `npm run build`, and for
   UI work a Playwright check against a local prod server
   (`/opt/pw-browsers/chromium`, local Postgres 16: `service postgresql start`,
