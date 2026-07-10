@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { suggestPlantsFromUpload, SuggestPlantsState } from "@/lib/actions";
+import { prepareImageForUpload } from "@/lib/image-resize";
 import { MAX_PHOTO_MB, photoTooLargeMessage } from "@/lib/photo-limits";
 import { speciesArt } from "@/lib/species-art";
+import { IdentifyLoading } from "./identify-loading";
 import { WikiImage } from "./wiki-image";
 
 const confidenceLabel = {
@@ -24,13 +26,18 @@ export function IdentifyClient() {
       setState({ status: "error", message: "Choose a photo first." });
       return;
     }
-    if (file.size > MAX_PHOTO_MB * 1024 * 1024) {
-      setState({ status: "error", message: photoTooLargeMessage(file.size) });
-      return;
-    }
-    const fd = new FormData();
-    fd.set("photo", file);
     startTransition(async () => {
+      // Oversized photos are downscaled in the browser instead of rejected.
+      const prepared = await prepareImageForUpload(file);
+      if (prepared.size > MAX_PHOTO_MB * 1024 * 1024) {
+        setState({
+          status: "error",
+          message: photoTooLargeMessage(prepared.size),
+        });
+        return;
+      }
+      const fd = new FormData();
+      fd.set("photo", prepared);
       setState(await suggestPlantsFromUpload(fd));
     });
   }
@@ -60,14 +67,16 @@ export function IdentifyClient() {
         )}
       </div>
 
-      {state.status === "done" && !state.isPlant && (
+      {pending && <IdentifyLoading />}
+
+      {!pending && state.status === "done" && !state.isPlant && (
         <p className="card px-4 py-3 text-sm text-[var(--color-muted)]">
           That doesn&apos;t look like a plant — try another photo with the
           plant clearly in view.
         </p>
       )}
 
-      {state.status === "done" && state.isPlant && (
+      {!pending && state.status === "done" && state.isPlant && (
         <div className="space-y-3">
           {state.suggestions.map((s, i) => (
             <article key={s.scientificName + i} className="card space-y-3 p-4">

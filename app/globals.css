@@ -186,3 +186,23 @@
     color-scheme: light dark;
   }
 }
+
+/* Identify loading animation (sprout sway + sequential leaf pulse) */
+@keyframes sprout-sway {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}
+@keyframes leaf-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  35% {
+    opacity: 1;
+  }
+}
