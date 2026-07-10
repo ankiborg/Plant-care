@@ -215,6 +215,77 @@ export async function identifyFromUpload(
   };
 }
 
+export interface RankedSuggestion {
+  scientificName: string;
+  englishName: string;
+  swedishName: string;
+  confidence: "high" | "medium" | "low";
+  description: string;
+  careSummary: string;
+  toxicity: string;
+  matchedSpeciesId: string | null;
+  matchedCommonName: string | null;
+}
+
+export type SuggestPlantsState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | {
+      status: "done";
+      isPlant: boolean;
+      photoUrl: string;
+      suggestions: RankedSuggestion[];
+    };
+
+/**
+ * Open-ended identification for the Identify page: upload a photo of any
+ * plant and get ranked suggestions. Marks suggestions that match a seeded
+ * species so the UI can offer "Add to my plants".
+ */
+export async function suggestPlantsFromUpload(
+  formData: FormData
+): Promise<SuggestPlantsState> {
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) {
+    return { status: "error", message: "Choose a photo first." };
+  }
+  if (file.size > MAX_PHOTO_MB * 1024 * 1024) {
+    return { status: "error", message: photoTooLargeMessage(file.size) };
+  }
+
+  const uploaded = await uploadToCloudinary(file);
+  if ("error" in uploaded) return { status: "error", message: uploaded.error };
+
+  const { suggestPlants } = await import("./vision");
+  const result = await suggestPlants(uploaded.url);
+  if ("error" in result) return { status: "error", message: result.error };
+
+  const species = await prisma.species.findMany({
+    select: { id: true, commonName: true, scientificName: true },
+  });
+  const byScientificName = new Map(
+    species
+      .filter((s) => s.scientificName)
+      .map((s) => [s.scientificName!.trim().toLowerCase(), s])
+  );
+
+  return {
+    status: "done",
+    isPlant: result.isPlant,
+    photoUrl: uploaded.url,
+    suggestions: result.suggestions.map((s) => {
+      const match = byScientificName.get(
+        s.scientificName.trim().toLowerCase()
+      );
+      return {
+        ...s,
+        matchedSpeciesId: match?.id ?? null,
+        matchedCommonName: match?.commonName ?? null,
+      };
+    }),
+  };
+}
+
 export type DiagnoseState =
   | { status: "idle" }
   | { status: "error"; message: string }

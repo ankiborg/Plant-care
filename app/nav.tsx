@@ -108,6 +108,20 @@ function IconPlants({ active }: { active: boolean }) {
   );
 }
 
+function IconIdentify({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
+      <path
+        d="M8 6.5 9.3 4.6c.25-.37.66-.6 1.11-.6h3.18c.45 0 .86.23 1.11.6L16 6.5h2.5A2.5 2.5 0 0 1 21 9v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17V9a2.5 2.5 0 0 1 2.5-2.5H8Z"
+        stroke="currentColor"
+        strokeWidth={active ? 1.9 : 1.6}
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth={active ? 1.9 : 1.6} />
+    </svg>
+  );
+}
+
 function IconAdd() {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
@@ -137,6 +151,7 @@ export function TopBar() {
 const TABS = [
   { href: "/", label: "Today", icon: IconToday },
   { href: "/plants", label: "Plants", icon: IconPlants },
+  { href: "/identify", label: "Identify", icon: IconIdentify },
   { href: "/plants/new", label: "Add", icon: IconAdd },
 ] as const;
 
@@ -145,6 +160,7 @@ export function TabBar() {
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
+    if (href === "/identify") return pathname === "/identify";
     if (href === "/plants/new") return pathname === "/plants/new";
     return pathname === "/plants" || (pathname.startsWith("/plants/") && pathname !== "/plants/new");
   };

@@ -18,11 +18,19 @@ const confidenceLabel = {
   low: "low confidence",
 } as const;
 
-export function IdentifyField({ species }: { species: Species[] }) {
+export function IdentifyField({
+  species,
+  initialSpeciesId,
+}: {
+  species: Species[];
+  initialSpeciesId?: string;
+}) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [state, setState] = useState<IdentifyState>({ status: "idle" });
-  const [speciesId, setSpeciesId] = useState(species[0]?.id ?? "");
+  const [speciesId, setSpeciesId] = useState(
+    initialSpeciesId ?? species[0]?.id ?? ""
+  );
   const selected = species.find((s) => s.id === speciesId);
 
   function identify() {

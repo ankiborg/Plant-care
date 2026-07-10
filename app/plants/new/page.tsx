@@ -8,10 +8,20 @@ import { IdentifyField } from "./identify-field";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewPlantPage() {
+export default async function NewPlantPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ speciesId?: string }>;
+}) {
+  const { speciesId } = await searchParams;
   const species = await prisma.species.findMany({
     orderBy: { commonName: "asc" },
   });
+  // Preselect the species when arriving from the Identify page; ignore ids
+  // that aren't in the list.
+  const initialSpeciesId = species.some((s) => s.id === speciesId)
+    ? speciesId
+    : undefined;
   const locationRows = await prisma.plant.findMany({
     where: { archived: false, location: { not: null } },
     select: { location: true },
@@ -41,6 +51,7 @@ export default async function NewPlantPage() {
 
       <form action={createPlant} className="card space-y-5 p-5">
         <IdentifyField
+          initialSpeciesId={initialSpeciesId}
           species={species.map((s) => ({
             id: s.id,
             commonName: s.commonName,
