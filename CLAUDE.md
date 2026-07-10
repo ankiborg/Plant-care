@@ -42,9 +42,14 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
   `{status:"error", message}` states with distinct messages for missing vs
   broken `CLOUDINARY_URL`. 8 MB photo cap (`lib/photo-limits.ts`, checked
   client + server). Body limit raised to 20 MB in `next.config.ts`.
-- `lib/vision.ts` — identifySpecies / diagnosePlant, JSON-schema output,
-  returns `{error}` instead of throwing. Tests mock `@anthropic-ai/sdk` and
-  need `vi.resetModules()` (module caches the client).
+- `lib/vision.ts` — identifySpecies / diagnosePlant / suggestPlants (open-ended
+  ranked ID, prose fields default Swedish via `InfoLanguage` param), JSON-schema
+  output, returns `{error}` instead of throwing. Tests mock `@anthropic-ai/sdk`
+  and need `vi.resetModules()` (module caches the client).
+- `lib/wikipedia.ts` — pure helpers for example photos on `/identify`: summary
+  URL builder + image extraction. Fetched client-side (sv → en fallback,
+  illustrated SVG as last resort); sandbox blocks Wikimedia so only the
+  fallback path is verifiable locally.
 - `prisma/seed.ts` — 17 species, upserts by `commonName` (never rename a
   commonName — add new entries or edit notes only).
 - `lib/species-art.ts` + `public/species/*.svg` — 18 illustrated species
@@ -56,7 +61,10 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
 - Screens: `app/page.tsx` Today (due tasks), `app/plants` grid with `?room=`
   filter chips, `app/plants/[id]` detail (care log, photos + compare mode,
   AI diagnose, edit), `app/plants/new` (AI identify → photo saved on create
-  via hidden `identifyPhotoUrl`; `app/location-field.tsx` place dropdown).
+  via hidden `identifyPhotoUrl`; `app/location-field.tsx` place dropdown;
+  `?speciesId=` preselects the species), `app/identify` (photo → up to 3
+  ranked suggestions with Wikipedia photos + sv/en/latin names; matched seeded
+  species link to `/plants/new?speciesId=`).
 
 ## Gotchas
 

@@ -25,12 +25,13 @@ function textOf(message: Anthropic.Message): string {
 async function visionJson<T>(
   imageUrl: string,
   prompt: string,
-  schema: Record<string, unknown>
+  schema: Record<string, unknown>,
+  opts: { maxTokens?: number } = {}
 ): Promise<T | { error: string }> {
   try {
     const message = await client().messages.create({
       model: MODEL,
-      max_tokens: 1024,
+      max_tokens: opts.maxTokens ?? 1024,
       // Simple perception task — keep effort (and cost/latency) low.
       output_config: {
         effort: "low",
@@ -143,6 +144,105 @@ that the plant is the species you named. Keep "reasoning" to one short sentence.
     guessScientificName: result.guessScientificName,
     confidence: result.confidence,
   };
+}
+
+// --- Open-ended identification (any plant, ranked suggestions) ---
+
+/** Language the prose fields (description/care/toxicity) are written in. */
+export type InfoLanguage = "sv" | "en";
+
+const LANGUAGE_NAMES: Record<InfoLanguage, string> = {
+  sv: "Swedish",
+  en: "English",
+};
+
+export interface PlantSuggestion {
+  scientificName: string;
+  englishName: string;
+  swedishName: string; // "" when no established Swedish name exists
+  confidence: "high" | "medium" | "low";
+  description: string;
+  careSummary: string;
+  toxicity: string;
+}
+
+export interface PlantSuggestions {
+  isPlant: boolean;
+  suggestions: PlantSuggestion[]; // ranked, most likely first, max 3
+}
+
+const SUGGEST_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    isPlant: {
+      type: "boolean",
+      description: "false if the image clearly contains no plant",
+    },
+    suggestions: {
+      type: "array",
+      maxItems: 3,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          scientificName: { type: "string" },
+          englishName: { type: "string" },
+          swedishName: {
+            type: "string",
+            description:
+              "Established Swedish common name, or empty string if none exists",
+          },
+          confidence: { type: "string", enum: ["high", "medium", "low"] },
+          description: {
+            type: "string",
+            description: "2-3 sentences: what the plant is, where it grows",
+          },
+          careSummary: {
+            type: "string",
+            description: "1-2 sentences: light, water, hardiness",
+          },
+          toxicity: {
+            type: "string",
+            description:
+              "One sentence on toxicity to pets/children, or that it is considered safe",
+          },
+        },
+        required: [
+          "scientificName",
+          "englishName",
+          "swedishName",
+          "confidence",
+          "description",
+          "careSummary",
+          "toxicity",
+        ],
+      },
+    },
+  },
+  required: ["isPlant", "suggestions"],
+} as const;
+
+export async function suggestPlants(
+  imageUrl: string,
+  opts: { language?: InfoLanguage } = {}
+): Promise<PlantSuggestions | { error: string }> {
+  const languageName = LANGUAGE_NAMES[opts.language ?? "sv"];
+
+  const prompt = `You are a botanist identifying a plant from a photo. It can
+be any kind of plant: a houseplant, garden plant, wild flower, tree or shrub.
+
+Give up to 3 ranked candidates for what the plant is, most likely first. For
+each candidate provide the exact scientific (Latin) name, the common English
+name, and the established Swedish common name (empty string if none exists).
+Write "description", "careSummary" and "toxicity" in ${languageName}. Keep
+each text field short. If the image contains no plant at all, set isPlant to
+false and return an empty suggestions array.`;
+
+  return visionJson<PlantSuggestions>(imageUrl, prompt, SUGGEST_SCHEMA, {
+    // Three candidates with prose fields don't fit in the default 1024.
+    maxTokens: 2048,
+  });
 }
 
 export interface Diagnosis {

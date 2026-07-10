@@ -82,3 +82,76 @@ describe("identifySpecies", () => {
     expect(r).toHaveProperty("error");
   });
 });
+
+describe("suggestPlants", () => {
+  beforeEach(() => {
+    create.mockReset();
+    vi.resetModules();
+  });
+
+  const twoSuggestions = {
+    isPlant: true,
+    suggestions: [
+      {
+        scientificName: "Monstera deliciosa",
+        englishName: "Swiss cheese plant",
+        swedishName: "Monstera",
+        confidence: "high",
+        description: "En klättrande växt.",
+        careSummary: "Ljust utan direkt sol.",
+        toxicity: "Giftig för husdjur.",
+      },
+      {
+        scientificName: "Monstera adansonii",
+        englishName: "Swiss cheese vine",
+        swedishName: "",
+        confidence: "low",
+        description: "En mindre släkting.",
+        careSummary: "Samma skötsel.",
+        toxicity: "Giftig för husdjur.",
+      },
+    ],
+  };
+
+  it("passes ranked suggestions through and requests Swedish by default", async () => {
+    create.mockResolvedValue(reply(twoSuggestions));
+    const { suggestPlants } = await import("./vision");
+    const r = await suggestPlants("https://img/x.jpg");
+    expect(r).toEqual(twoSuggestions);
+
+    const params = create.mock.calls[0][0];
+    expect(params.max_tokens).toBe(2048);
+    expect(params.messages[0].content[1].text).toContain("in Swedish");
+  });
+
+  it("threads the language option into the prompt", async () => {
+    create.mockResolvedValue(reply({ isPlant: true, suggestions: [] }));
+    const { suggestPlants } = await import("./vision");
+    await suggestPlants("https://img/x.jpg", { language: "en" });
+    const params = create.mock.calls[0][0];
+    expect(params.messages[0].content[1].text).toContain("in English");
+  });
+
+  it("passes a non-plant verdict through", async () => {
+    create.mockResolvedValue(reply({ isPlant: false, suggestions: [] }));
+    const { suggestPlants } = await import("./vision");
+    const r = await suggestPlants("https://img/x.jpg");
+    expect(r).toEqual({ isPlant: false, suggestions: [] });
+  });
+
+  it("returns an error shape on refusal instead of throwing", async () => {
+    create.mockResolvedValue(reply({}, "refusal"));
+    const { suggestPlants } = await import("./vision");
+    const r = await suggestPlants("https://img/x.jpg");
+    expect(r).toHaveProperty("error");
+  });
+
+  it("returns an error shape when the SDK throws", async () => {
+    create.mockImplementation(() => {
+      throw new Error("no api key");
+    });
+    const { suggestPlants } = await import("./vision");
+    const r = await suggestPlants("https://img/x.jpg");
+    expect(r).toHaveProperty("error");
+  });
+});
