@@ -124,6 +124,35 @@ describe("suggestPlants", () => {
     expect(params.messages[0].content[1].text).toContain("in Swedish");
   });
 
+  it("sends a schema without unsupported array constraints", async () => {
+    // Structured outputs reject maxItems/minItems with a 400 — the API then
+    // surfaces a misleading "check ANTHROPIC_API_KEY" error to the user.
+    create.mockResolvedValue(reply({ isPlant: true, suggestions: [] }));
+    const { suggestPlants } = await import("./vision");
+    await suggestPlants("https://img/x.jpg");
+    const schema = create.mock.calls[0][0].output_config.format.schema;
+    expect(JSON.stringify(schema)).not.toMatch(/maxItems|minItems/);
+  });
+
+  it("caps the suggestions list at 3", async () => {
+    const extra = {
+      scientificName: "Extra plantus",
+      englishName: "Extra",
+      swedishName: "",
+      confidence: "low",
+      description: "x",
+      careSummary: "x",
+      toxicity: "x",
+    };
+    create.mockResolvedValue(
+      reply({ isPlant: true, suggestions: [extra, extra, extra, extra, extra] })
+    );
+    const { suggestPlants } = await import("./vision");
+    const r = await suggestPlants("https://img/x.jpg");
+    if ("error" in r) throw new Error("unexpected error");
+    expect(r.suggestions).toHaveLength(3);
+  });
+
   it("threads the language option into the prompt", async () => {
     create.mockResolvedValue(reply({ isPlant: true, suggestions: [] }));
     const { suggestPlants } = await import("./vision");

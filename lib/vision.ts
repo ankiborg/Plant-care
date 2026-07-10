@@ -181,7 +181,9 @@ const SUGGEST_SCHEMA = {
     },
     suggestions: {
       type: "array",
-      maxItems: 3,
+      // NOTE: no maxItems — structured outputs reject array constraints
+      // (maxItems/minItems) with a 400. The prompt asks for "up to 3" and
+      // suggestPlants slices defensively instead.
       items: {
         type: "object",
         additionalProperties: false,
@@ -239,10 +241,16 @@ Write "description", "careSummary" and "toxicity" in ${languageName}. Keep
 each text field short. If the image contains no plant at all, set isPlant to
 false and return an empty suggestions array.`;
 
-  return visionJson<PlantSuggestions>(imageUrl, prompt, SUGGEST_SCHEMA, {
+  const result = await visionJson<PlantSuggestions>(
+    imageUrl,
+    prompt,
+    SUGGEST_SCHEMA,
     // Three candidates with prose fields don't fit in the default 1024.
-    maxTokens: 2048,
-  });
+    { maxTokens: 2048 }
+  );
+  if ("error" in result) return result;
+
+  return { ...result, suggestions: result.suggestions.slice(0, 3) };
 }
 
 export interface Diagnosis {
