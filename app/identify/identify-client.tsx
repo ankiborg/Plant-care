@@ -2,12 +2,23 @@
 
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
-import { suggestPlantsFromUpload, SuggestPlantsState } from "@/lib/actions";
+import {
+  RankedSuggestion,
+  suggestPlantsFromUpload,
+  SuggestPlantsState,
+} from "@/lib/actions";
 import { prepareImageForUpload } from "@/lib/image-resize";
 import { MAX_PHOTO_MB, photoTooLargeMessage } from "@/lib/photo-limits";
 import { speciesArt } from "@/lib/species-art";
 import { IdentifyLoading } from "./identify-loading";
+import { PlantDetailSheet } from "./plant-detail-sheet";
 import { WikiImage } from "./wiki-image";
+
+function artFor(s: RankedSuggestion): string {
+  return s.matchedCommonName
+    ? speciesArt(s.matchedCommonName)
+    : "/species/generic.svg";
+}
 
 const confidenceLabel = {
   high: "high confidence",
@@ -15,11 +26,17 @@ const confidenceLabel = {
   low: "low confidence",
 } as const;
 
-export function IdentifyClient() {
+export function IdentifyClient({
+  // Test hook: lets UI checks render results without calling the AI.
+  initialState = { status: "idle" },
+}: {
+  initialState?: SuggestPlantsState;
+}) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
-  const [state, setState] = useState<SuggestPlantsState>({ status: "idle" });
+  const [state, setState] = useState<SuggestPlantsState>(initialState);
+  const [detail, setDetail] = useState<RankedSuggestion | null>(null);
 
   // Runs as soon as a photo is taken or picked — no separate Identify button.
   function identify(file: File) {
@@ -112,16 +129,29 @@ export function IdentifyClient() {
 
       {!pending && state.status === "done" && state.isPlant && (
         <div className="space-y-3">
+          {state.suggestions.length > 0 && (
+            <p className="text-xs text-[var(--color-faint)]">
+              Tap a card for details and more photos.
+            </p>
+          )}
           {state.suggestions.map((s, i) => (
-            <article key={s.scientificName + i} className="card space-y-3 p-4">
+            <article
+              key={s.scientificName + i}
+              role="button"
+              tabIndex={0}
+              onClick={() => setDetail(s)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setDetail(s);
+                }
+              }}
+              className="card cursor-pointer space-y-3 p-4 transition-shadow hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-forest)]"
+            >
               <div className="flex items-start gap-3">
                 <WikiImage
                   scientificName={s.scientificName}
-                  fallbackSrc={
-                    s.matchedCommonName
-                      ? speciesArt(s.matchedCommonName)
-                      : "/species/generic.svg"
-                  }
+                  fallbackSrc={artFor(s)}
                   alt={s.scientificName}
                 />
                 <div className="min-w-0 flex-1 space-y-0.5">
@@ -161,6 +191,7 @@ export function IdentifyClient() {
               {s.matchedSpeciesId && (
                 <Link
                   href={`/plants/new?speciesId=${s.matchedSpeciesId}`}
+                  onClick={(e) => e.stopPropagation()}
                   className="btn btn-ghost"
                 >
                   Add to my plants
@@ -175,6 +206,15 @@ export function IdentifyClient() {
             </p>
           )}
         </div>
+      )}
+
+      {detail && (
+        <PlantDetailSheet
+          suggestion={detail}
+          photoUrl={state.status === "done" ? state.photoUrl : null}
+          fallbackSrc={artFor(detail)}
+          onClose={() => setDetail(null)}
+        />
       )}
     </div>
   );
