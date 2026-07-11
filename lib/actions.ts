@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { v2 as cloudinary } from "cloudinary";
 import { prisma } from "./prisma";
 import { MAX_PHOTO_MB, photoTooLargeMessage } from "./photo-limits";
+import { parseSavedCategory } from "./saved-plants";
 
 export async function logCare(plantId: string, type: CareType, note?: string) {
   await prisma.careLog.create({
@@ -284,6 +285,67 @@ export async function suggestPlantsFromUpload(
       };
     }),
   };
+}
+
+// --- Saved plants (Garden tab: garden / wishlist / spotted) ---
+
+export type SavePlantState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "done"; id: string };
+
+/** Save an identification suggestion to the Garden tab. */
+export async function saveIdentifiedPlant(
+  formData: FormData
+): Promise<SavePlantState> {
+  const category = parseSavedCategory(formData.get("category"));
+  if (!category) {
+    return { status: "error", message: "Pick a category first." };
+  }
+  const scientificName = String(formData.get("scientificName") ?? "").trim();
+  if (!scientificName) {
+    return { status: "error", message: "Missing plant name — try again." };
+  }
+  const text = (key: string) => String(formData.get(key) ?? "").trim();
+  const photoUrl = text("photoUrl");
+
+  const saved = await prisma.savedPlant.create({
+    data: {
+      category,
+      scientificName,
+      swedishName: text("swedishName"),
+      englishName: text("englishName"),
+      description: text("description"),
+      careSummary: text("careSummary"),
+      toxicity: text("toxicity"),
+      // Same trust rule as createPlant: only our own Cloudinary uploads.
+      photoUrl: photoUrl.startsWith("https://res.cloudinary.com/")
+        ? photoUrl
+        : null,
+    },
+  });
+  revalidatePath("/garden");
+  return { status: "done", id: saved.id };
+}
+
+/** Update a saved plant's category and/or note from its detail page. */
+export async function updateSavedPlant(formData: FormData) {
+  const id = String(formData.get("id"));
+  const category = parseSavedCategory(formData.get("category"));
+  if (!category) return;
+  await prisma.savedPlant.update({
+    where: { id },
+    data: { category, note: String(formData.get("note") ?? "").trim() || null },
+  });
+  revalidatePath("/garden");
+  revalidatePath(`/garden/${id}`);
+}
+
+export async function deleteSavedPlant(formData: FormData) {
+  const id = String(formData.get("id"));
+  await prisma.savedPlant.delete({ where: { id } });
+  revalidatePath("/garden");
+  redirect("/garden");
 }
 
 export type DiagnoseState =

@@ -122,10 +122,22 @@ function IconIdentify({ active }: { active: boolean }) {
   );
 }
 
-function IconAdd() {
+function IconGarden({ active }: { active: boolean }) {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
-      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      {/* deciduous tree: crown + trunk */}
+      <path
+        d="M12 4a6 6 0 0 1 6 6c0 3-2.5 5.5-6 5.5S6 13 6 10a6 6 0 0 1 6-6Z"
+        stroke="currentColor"
+        strokeWidth={active ? 1.9 : 1.6}
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 15.5V21M12 18l2.5-2M12 19l-2-1.5"
+        stroke="currentColor"
+        strokeWidth={active ? 1.9 : 1.6}
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -151,8 +163,8 @@ export function TopBar() {
 const TABS = [
   { href: "/", label: "Today", icon: IconToday },
   { href: "/plants", label: "Plants", icon: IconPlants },
+  { href: "/garden", label: "Garden", icon: IconGarden },
   { href: "/identify", label: "Identify", icon: IconIdentify },
-  { href: "/plants/new", label: "Add", icon: IconAdd },
 ] as const;
 
 export function TabBar() {
@@ -160,9 +172,8 @@ export function TabBar() {
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
-    if (href === "/identify") return pathname === "/identify";
-    if (href === "/plants/new") return pathname === "/plants/new";
-    return pathname === "/plants" || (pathname.startsWith("/plants/") && pathname !== "/plants/new");
+    // Adding a plant lives under the Plants tab (/plants/new).
+    return pathname === href || pathname.startsWith(`${href}/`);
   };
 
   return (

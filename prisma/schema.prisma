@@ -37,6 +37,25 @@ model Plant {
   updatedAt  DateTime     @updatedAt
 }
 
+// Plants saved from the Identify page: outdoor garden plants, wishlist and
+// plants spotted elsewhere. Knowledge entries — no care schedule (that's Plant).
+model SavedPlant {
+  id             String        @id @default(cuid())
+  category       SavedCategory
+  scientificName String
+  swedishName    String // "" when no established Swedish name exists
+  englishName    String
+  description    String
+  careSummary    String
+  toxicity       String
+  suitability    String? // "would it thrive at my place" (set once settings exist)
+  plantingTips   String?
+  photoUrl       String? // the user's identification photo (Cloudinary)
+  note           String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
 model CareLog {
   id      String   @id @default(cuid())
   plant   Plant    @relation(fields: [plantId], references: [id])
@@ -72,6 +91,12 @@ enum PotSize {
   SMALL
   MEDIUM
   LARGE
+}
+
+enum SavedCategory {
+  GARDEN
+  WISHLIST
+  SPOTTED
 }
 
 enum CareType {

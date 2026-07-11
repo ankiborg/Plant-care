@@ -40,10 +40,12 @@ export function WikiImage({
   scientificName,
   fallbackSrc,
   alt,
+  className = "h-20 w-20 shrink-0 rounded-xl bg-[var(--color-surface-2)] object-cover",
 }: {
   scientificName: string;
   fallbackSrc: string;
   alt: string;
+  className?: string;
 }) {
   const [src, setSrc] = useState<string | null>(null);
 
@@ -65,7 +67,7 @@ export function WikiImage({
       loading="lazy"
       referrerPolicy="no-referrer"
       onError={() => setSrc(null)}
-      className="h-20 w-20 shrink-0 rounded-xl bg-[var(--color-surface-2)] object-cover"
+      className={className}
     />
   );
 }

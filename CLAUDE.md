@@ -65,11 +65,20 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
 - Design system "Fern": tokens in globals.css, dark mode via
   `prefers-color-scheme` + `:root[data-theme]` override (pre-paint script in
   layout.tsx). Fonts Fraunces + Inter via next/font.
+- `lib/saved-plants.ts` + `SavedPlant` model — plants saved from Identify
+  into three categories (GARDEN/WISHLIST/SPOTTED, labels + `parseSavedCategory`
+  in the lib). Actions: `saveIdentifiedPlant` / `updateSavedPlant` /
+  `deleteSavedPlant`. No care schedule — knowledge entries only.
+- Nav is 4 tabs: Today, Plants, Garden, Identify. No Add tab — adding lives
+  as the "+ Add plant" button on `/plants` (tab stays active on `/plants/new`).
 - Screens: `app/page.tsx` Today (due tasks), `app/plants` grid with `?room=`
   filter chips, `app/plants/[id]` detail (care log, photos + compare mode,
   AI diagnose, edit), `app/plants/new` (AI identify → photo saved on create
   via hidden `identifyPhotoUrl`; `app/location-field.tsx` place dropdown;
-  `?speciesId=` preselects the species), `app/identify` (photo → up to 3
+  `?speciesId=` preselects the species), `app/garden` (saved plants grid with
+  `?cat=` chips; `app/garden/[id]` detail with `wiki-gallery.tsx` — shared
+  hero + thumbnail strip + fullscreen, also used by the identify sheet —
+  category/note edit + delete), `app/identify` (photo → up to 3
   ranked suggestions with Wikipedia photos + sv/en/latin names; matched seeded
   species link to `/plants/new?speciesId=`; camera/gallery buttons auto-start
   identification; tapping a card opens `plant-detail-sheet.tsx` — bottom sheet
