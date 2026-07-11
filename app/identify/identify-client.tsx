@@ -16,16 +16,13 @@ const confidenceLabel = {
 } as const;
 
 export function IdentifyClient() {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [state, setState] = useState<SuggestPlantsState>({ status: "idle" });
 
-  function identify() {
-    const file = fileRef.current?.files?.[0];
-    if (!file) {
-      setState({ status: "error", message: "Choose a photo first." });
-      return;
-    }
+  // Runs as soon as a photo is taken or picked — no separate Identify button.
+  function identify(file: File) {
     startTransition(async () => {
       // Oversized photos are downscaled in the browser instead of rejected.
       const prepared = await prepareImageForUpload(file);
@@ -42,30 +39,67 @@ export function IdentifyClient() {
     });
   }
 
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Clear so picking the same photo again re-triggers change.
+    e.target.value = "";
+    if (file) identify(file);
+  }
+
   return (
     <div className="space-y-4">
-      <div className="card space-y-3 p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            ref={fileRef}
-            type="file"
-            name="photo"
-            accept="image/*"
-            className="min-w-0 flex-1 text-sm text-[var(--color-muted)] file:mr-3 file:rounded-full file:border-0 file:bg-[var(--color-sage)] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[var(--color-forest)]"
-          />
-          <button
-            type="button"
-            onClick={identify}
-            disabled={pending}
-            className="btn btn-primary shrink-0"
-          >
-            {pending ? "Identifying…" : "Identify"}
-          </button>
-        </div>
-        {state.status === "error" && (
-          <p className="text-sm text-[var(--color-clay)]">{state.message}</p>
-        )}
+      {/* Hidden inputs: `capture` opens the camera directly on mobile;
+          the plain one opens the gallery/file picker. */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={onPick}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        onChange={onPick}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => cameraRef.current?.click()}
+          disabled={pending}
+          className="btn btn-primary flex-col gap-1 rounded-2xl py-4 text-base"
+        >
+          <span aria-hidden="true" className="text-2xl leading-none">
+            📷
+          </span>
+          Take a photo
+        </button>
+        <button
+          type="button"
+          onClick={() => galleryRef.current?.click()}
+          disabled={pending}
+          className="btn btn-ghost flex-col gap-1 rounded-2xl py-4 text-base"
+        >
+          <span aria-hidden="true" className="text-2xl leading-none">
+            🖼️
+          </span>
+          Choose a photo
+        </button>
       </div>
+
+      {state.status === "error" && (
+        <p className="card px-4 py-3 text-sm text-[var(--color-clay)]">
+          {state.message}
+        </p>
+      )}
 
       {pending && <IdentifyLoading />}
 
