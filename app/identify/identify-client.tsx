@@ -2,12 +2,23 @@
 
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
-import { suggestPlantsFromUpload, SuggestPlantsState } from "@/lib/actions";
+import {
+  RankedSuggestion,
+  suggestPlantsFromUpload,
+  SuggestPlantsState,
+} from "@/lib/actions";
 import { prepareImageForUpload } from "@/lib/image-resize";
 import { MAX_PHOTO_MB, photoTooLargeMessage } from "@/lib/photo-limits";
 import { speciesArt } from "@/lib/species-art";
 import { IdentifyLoading } from "./identify-loading";
+import { PlantDetailSheet } from "./plant-detail-sheet";
 import { WikiImage } from "./wiki-image";
+
+function artFor(s: RankedSuggestion): string {
+  return s.matchedCommonName
+    ? speciesArt(s.matchedCommonName)
+    : "/species/generic.svg";
+}
 
 const confidenceLabel = {
   high: "high confidence",
@@ -15,17 +26,20 @@ const confidenceLabel = {
   low: "low confidence",
 } as const;
 
-export function IdentifyClient() {
-  const fileRef = useRef<HTMLInputElement>(null);
+export function IdentifyClient({
+  // Test hook: lets UI checks render results without calling the AI.
+  initialState = { status: "idle" },
+}: {
+  initialState?: SuggestPlantsState;
+}) {
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
-  const [state, setState] = useState<SuggestPlantsState>({ status: "idle" });
+  const [state, setState] = useState<SuggestPlantsState>(initialState);
+  const [detail, setDetail] = useState<RankedSuggestion | null>(null);
 
-  function identify() {
-    const file = fileRef.current?.files?.[0];
-    if (!file) {
-      setState({ status: "error", message: "Choose a photo first." });
-      return;
-    }
+  // Runs as soon as a photo is taken or picked — no separate Identify button.
+  function identify(file: File) {
     startTransition(async () => {
       // Oversized photos are downscaled in the browser instead of rejected.
       const prepared = await prepareImageForUpload(file);
@@ -42,30 +56,67 @@ export function IdentifyClient() {
     });
   }
 
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Clear so picking the same photo again re-triggers change.
+    e.target.value = "";
+    if (file) identify(file);
+  }
+
   return (
     <div className="space-y-4">
-      <div className="card space-y-3 p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            ref={fileRef}
-            type="file"
-            name="photo"
-            accept="image/*"
-            className="min-w-0 flex-1 text-sm text-[var(--color-muted)] file:mr-3 file:rounded-full file:border-0 file:bg-[var(--color-sage)] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[var(--color-forest)]"
-          />
-          <button
-            type="button"
-            onClick={identify}
-            disabled={pending}
-            className="btn btn-primary shrink-0"
-          >
-            {pending ? "Identifying…" : "Identify"}
-          </button>
-        </div>
-        {state.status === "error" && (
-          <p className="text-sm text-[var(--color-clay)]">{state.message}</p>
-        )}
+      {/* Hidden inputs: `capture` opens the camera directly on mobile;
+          the plain one opens the gallery/file picker. */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={onPick}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        onChange={onPick}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => cameraRef.current?.click()}
+          disabled={pending}
+          className="btn btn-primary flex-col gap-1 rounded-2xl py-4 text-base"
+        >
+          <span aria-hidden="true" className="text-2xl leading-none">
+            📷
+          </span>
+          Take a photo
+        </button>
+        <button
+          type="button"
+          onClick={() => galleryRef.current?.click()}
+          disabled={pending}
+          className="btn btn-ghost flex-col gap-1 rounded-2xl py-4 text-base"
+        >
+          <span aria-hidden="true" className="text-2xl leading-none">
+            🖼️
+          </span>
+          Choose a photo
+        </button>
       </div>
+
+      {state.status === "error" && (
+        <p className="card px-4 py-3 text-sm text-[var(--color-clay)]">
+          {state.message}
+        </p>
+      )}
 
       {pending && <IdentifyLoading />}
 
@@ -78,16 +129,29 @@ export function IdentifyClient() {
 
       {!pending && state.status === "done" && state.isPlant && (
         <div className="space-y-3">
+          {state.suggestions.length > 0 && (
+            <p className="text-xs text-[var(--color-faint)]">
+              Tap a card for details and more photos.
+            </p>
+          )}
           {state.suggestions.map((s, i) => (
-            <article key={s.scientificName + i} className="card space-y-3 p-4">
+            <article
+              key={s.scientificName + i}
+              role="button"
+              tabIndex={0}
+              onClick={() => setDetail(s)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setDetail(s);
+                }
+              }}
+              className="card cursor-pointer space-y-3 p-4 transition-shadow hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-forest)]"
+            >
               <div className="flex items-start gap-3">
                 <WikiImage
                   scientificName={s.scientificName}
-                  fallbackSrc={
-                    s.matchedCommonName
-                      ? speciesArt(s.matchedCommonName)
-                      : "/species/generic.svg"
-                  }
+                  fallbackSrc={artFor(s)}
                   alt={s.scientificName}
                 />
                 <div className="min-w-0 flex-1 space-y-0.5">
@@ -127,6 +191,7 @@ export function IdentifyClient() {
               {s.matchedSpeciesId && (
                 <Link
                   href={`/plants/new?speciesId=${s.matchedSpeciesId}`}
+                  onClick={(e) => e.stopPropagation()}
                   className="btn btn-ghost"
                 >
                   Add to my plants
@@ -141,6 +206,15 @@ export function IdentifyClient() {
             </p>
           )}
         </div>
+      )}
+
+      {detail && (
+        <PlantDetailSheet
+          suggestion={detail}
+          photoUrl={state.status === "done" ? state.photoUrl : null}
+          fallbackSrc={artFor(detail)}
+          onClose={() => setDetail(null)}
+        />
       )}
     </div>
   );

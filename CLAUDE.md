@@ -71,7 +71,10 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
   via hidden `identifyPhotoUrl`; `app/location-field.tsx` place dropdown;
   `?speciesId=` preselects the species), `app/identify` (photo → up to 3
   ranked suggestions with Wikipedia photos + sv/en/latin names; matched seeded
-  species link to `/plants/new?speciesId=`).
+  species link to `/plants/new?speciesId=`; camera/gallery buttons auto-start
+  identification; tapping a card opens `plant-detail-sheet.tsx` — bottom sheet
+  with Wikipedia media-list gallery + fullscreen images; `IdentifyClient` has
+  an `initialState` prop as a UI-test hook).
 
 ## Gotchas
 

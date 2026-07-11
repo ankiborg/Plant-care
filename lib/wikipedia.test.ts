@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { extractWikipediaImage, wikipediaSummaryUrl } from "./wikipedia";
+import {
+  extractWikipediaImage,
+  extractWikipediaImages,
+  wikipediaMediaListUrl,
+  wikipediaSummaryUrl,
+} from "./wikipedia";
 
 describe("wikipediaSummaryUrl", () => {
   it("builds the sv summary URL with underscores for spaces", () => {
@@ -15,6 +20,52 @@ describe("wikipediaSummaryUrl", () => {
     expect(wikipediaSummaryUrl("sv", "Rosa × damascena")).toBe(
       "https://sv.wikipedia.org/api/rest_v1/page/summary/Rosa_%C3%97_damascena"
     );
+  });
+});
+
+describe("wikipediaMediaListUrl", () => {
+  it("builds the media-list URL with underscores for spaces", () => {
+    expect(wikipediaMediaListUrl("sv", "Saxifraga umbrosa")).toBe(
+      "https://sv.wikipedia.org/api/rest_v1/page/media-list/Saxifraga_umbrosa"
+    );
+  });
+});
+
+describe("extractWikipediaImages", () => {
+  const img = (src: string, type = "image") => ({ type, srcset: [{ src }] });
+
+  it("collects image URLs and fixes protocol-relative sources", () => {
+    expect(
+      extractWikipediaImages({
+        items: [img("//upload.wikimedia.org/a.jpg"), img("https://x/b.jpg")],
+      })
+    ).toEqual(["https://upload.wikimedia.org/a.jpg", "https://x/b.jpg"]);
+  });
+
+  it("skips non-images, SVGs and malformed entries", () => {
+    expect(
+      extractWikipediaImages({
+        items: [
+          img("//x/map.svg"),
+          img("//x/video.webm", "video"),
+          { type: "image" }, // no srcset
+          { type: "image", srcset: [{}] }, // no src
+          null,
+          img("//x/photo.jpg"),
+        ],
+      })
+    ).toEqual(["https://x/photo.jpg"]);
+  });
+
+  it("caps the number of images", () => {
+    const items = Array.from({ length: 10 }, (_, i) => img(`//x/${i}.jpg`));
+    expect(extractWikipediaImages({ items }, 6)).toHaveLength(6);
+  });
+
+  it("returns [] for broken payloads", () => {
+    expect(extractWikipediaImages(null)).toEqual([]);
+    expect(extractWikipediaImages({})).toEqual([]);
+    expect(extractWikipediaImages({ items: "nope" })).toEqual([]);
   });
 });
 
