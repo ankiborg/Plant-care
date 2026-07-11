@@ -75,8 +75,8 @@ export default async function PlantsPage({
                 : `${allPlants.length} in your care`}
           </p>
         </div>
-        <Link href="/plants/new" className="btn btn-ghost">
-          + Add
+        <Link href="/plants/new" className="btn btn-primary">
+          + Add plant
         </Link>
       </header>
 
