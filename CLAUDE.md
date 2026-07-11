@@ -65,6 +65,13 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
 - Design system "Fern": tokens in globals.css, dark mode via
   `prefers-color-scheme` + `:root[data-theme]` override (pre-paint script in
   layout.tsx). Fonts Fraunces + Inter via next/font.
+- `AppSettings` model (single row, id "app") + `/settings` page (gear icon in
+  TopBar): `homeLocation` + `hardinessZone` (växtzon 1–8, `lib/settings.ts`
+  parser). When set, `suggestPlants` gets a `home` param → prompt + schema gain
+  `suitability`/`plantingTips` per suggestion (maxTokens 3072); fields flow
+  into the identify sheet ("At my place"/"Planting") and are stored on saved
+  plants. Without settings the fields are absent and the sheet links to
+  /settings.
 - `lib/saved-plants.ts` + `SavedPlant` model — plants saved from Identify
   into three categories (GARDEN/WISHLIST/SPOTTED, labels + `parseSavedCategory`
   in the lib). Actions: `saveIdentifiedPlant` / `updateSavedPlant` /
