@@ -7,6 +7,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { prisma } from "./prisma";
 import { MAX_PHOTO_MB, photoTooLargeMessage } from "./photo-limits";
 import { parseSavedCategory } from "./saved-plants";
+import { parseHardinessZone } from "./settings";
 
 export async function logCare(plantId: string, type: CareType, note?: string) {
   await prisma.careLog.create({
@@ -224,6 +225,8 @@ export interface RankedSuggestion {
   description: string;
   careSummary: string;
   toxicity: string;
+  suitability: string | null; // null when no home location is set
+  plantingTips: string | null;
   matchedSpeciesId: string | null;
   matchedCommonName: string | null;
 }
@@ -257,8 +260,19 @@ export async function suggestPlantsFromUpload(
   const uploaded = await uploadToCloudinary(file);
   if ("error" in uploaded) return { status: "error", message: uploaded.error };
 
+  // With a home location set, suggestions also judge thrive-at-home fit.
+  const settings = await prisma.appSettings.findUnique({
+    where: { id: "app" },
+  });
+  const home = settings?.homeLocation
+    ? {
+        location: settings.homeLocation,
+        zone: settings.hardinessZone ?? undefined,
+      }
+    : undefined;
+
   const { suggestPlants } = await import("./vision");
-  const result = await suggestPlants(uploaded.url);
+  const result = await suggestPlants(uploaded.url, { home });
   if ("error" in result) return { status: "error", message: result.error };
 
   const species = await prisma.species.findMany({
@@ -280,6 +294,8 @@ export async function suggestPlantsFromUpload(
       );
       return {
         ...s,
+        suitability: s.suitability?.trim() || null,
+        plantingTips: s.plantingTips?.trim() || null,
         matchedSpeciesId: match?.id ?? null,
         matchedCommonName: match?.commonName ?? null,
       };
@@ -318,6 +334,8 @@ export async function saveIdentifiedPlant(
       description: text("description"),
       careSummary: text("careSummary"),
       toxicity: text("toxicity"),
+      suitability: text("suitability") || null,
+      plantingTips: text("plantingTips") || null,
       // Same trust rule as createPlant: only our own Cloudinary uploads.
       photoUrl: photoUrl.startsWith("https://res.cloudinary.com/")
         ? photoUrl
@@ -346,6 +364,22 @@ export async function deleteSavedPlant(formData: FormData) {
   await prisma.savedPlant.delete({ where: { id } });
   revalidatePath("/garden");
   redirect("/garden");
+}
+
+// --- Settings ---
+
+/** Save where the user lives (single settings row, fixed id "app"). */
+export async function updateSettings(formData: FormData) {
+  const homeLocation =
+    String(formData.get("homeLocation") ?? "").trim() || null;
+  const hardinessZone = parseHardinessZone(formData.get("hardinessZone"));
+  await prisma.appSettings.upsert({
+    where: { id: "app" },
+    update: { homeLocation, hardinessZone },
+    create: { id: "app", homeLocation, hardinessZone },
+  });
+  revalidatePath("/settings");
+  redirect("/settings?saved=1");
 }
 
 export type DiagnoseState =

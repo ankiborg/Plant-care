@@ -164,6 +164,15 @@ export interface PlantSuggestion {
   description: string;
   careSummary: string;
   toxicity: string;
+  // Present only when the caller passed a home location.
+  suitability?: string;
+  plantingTips?: string;
+}
+
+/** Where the user lives — makes suggestions include a thrive-at-home verdict. */
+export interface HomeContext {
+  location: string;
+  zone?: number; // Swedish växtzon 1–8
 }
 
 export interface PlantSuggestions {
@@ -171,82 +180,103 @@ export interface PlantSuggestions {
   suggestions: PlantSuggestion[]; // ranked, most likely first, max 3
 }
 
-const SUGGEST_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    isPlant: {
-      type: "boolean",
-      description: "false if the image clearly contains no plant",
+// NOTE: no maxItems etc. — structured outputs reject array/length constraints
+// with a 400. The prompt asks for "up to 3" and suggestPlants slices instead.
+// The home fields are added only when a home location is given, so the schema
+// is built by a function rather than a constant.
+function buildSuggestSchema(withHome: boolean): Record<string, unknown> {
+  const properties: Record<string, unknown> = {
+    scientificName: { type: "string" },
+    englishName: { type: "string" },
+    swedishName: {
+      type: "string",
+      description:
+        "Established Swedish common name, or empty string if none exists",
     },
-    suggestions: {
-      type: "array",
-      // NOTE: no maxItems — structured outputs reject array constraints
-      // (maxItems/minItems) with a 400. The prompt asks for "up to 3" and
-      // suggestPlants slices defensively instead.
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          scientificName: { type: "string" },
-          englishName: { type: "string" },
-          swedishName: {
-            type: "string",
-            description:
-              "Established Swedish common name, or empty string if none exists",
-          },
-          confidence: { type: "string", enum: ["high", "medium", "low"] },
-          description: {
-            type: "string",
-            description: "2-3 sentences: what the plant is, where it grows",
-          },
-          careSummary: {
-            type: "string",
-            description: "1-2 sentences: light, water, hardiness",
-          },
-          toxicity: {
-            type: "string",
-            description:
-              "One sentence on toxicity to pets/children, or that it is considered safe",
-          },
+    confidence: { type: "string", enum: ["high", "medium", "low"] },
+    description: {
+      type: "string",
+      description: "2-3 sentences: what the plant is, where it grows",
+    },
+    careSummary: {
+      type: "string",
+      description: "1-2 sentences: light, water, hardiness",
+    },
+    toxicity: {
+      type: "string",
+      description:
+        "One sentence on toxicity to pets/children, or that it is considered safe",
+    },
+  };
+  if (withHome) {
+    properties.suitability = {
+      type: "string",
+      description:
+        "1-2 sentences: would it thrive where the user lives (outdoors or indoors), given climate and hardiness",
+    };
+    properties.plantingTips = {
+      type: "string",
+      description:
+        "1-2 sentences: how to plant and care for it in the user's garden and climate",
+    };
+  }
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      isPlant: {
+        type: "boolean",
+        description: "false if the image clearly contains no plant",
+      },
+      suggestions: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties,
+          required: Object.keys(properties),
         },
-        required: [
-          "scientificName",
-          "englishName",
-          "swedishName",
-          "confidence",
-          "description",
-          "careSummary",
-          "toxicity",
-        ],
       },
     },
-  },
-  required: ["isPlant", "suggestions"],
-} as const;
+    required: ["isPlant", "suggestions"],
+  };
+}
 
 export async function suggestPlants(
   imageUrl: string,
-  opts: { language?: InfoLanguage } = {}
+  opts: { language?: InfoLanguage; home?: HomeContext } = {}
 ): Promise<PlantSuggestions | { error: string }> {
   const languageName = LANGUAGE_NAMES[opts.language ?? "sv"];
+  const home = opts.home;
+
+  const homeIntro = home
+    ? `\nThe user lives in ${home.location}${
+        home.zone ? ` (Swedish plant hardiness zone ${home.zone})` : ""
+      }.`
+    : "";
+  const homeFields = home
+    ? `\nFor each candidate also write "suitability" (would it thrive where the
+user lives — outdoors in their climate, or indoors only) and "plantingTips"
+(how to plant and care for it in their garden and climate).`
+    : "";
 
   const prompt = `You are a botanist identifying a plant from a photo. It can
-be any kind of plant: a houseplant, garden plant, wild flower, tree or shrub.
+be any kind of plant: a houseplant, garden plant, wild flower, tree or shrub.${homeIntro}
 
 Give up to 3 ranked candidates for what the plant is, most likely first. For
 each candidate provide the exact scientific (Latin) name, the common English
 name, and the established Swedish common name (empty string if none exists).
-Write "description", "careSummary" and "toxicity" in ${languageName}. Keep
-each text field short. If the image contains no plant at all, set isPlant to
-false and return an empty suggestions array.`;
+Write "description", "careSummary" and "toxicity" in ${languageName}.${homeFields}
+Keep each text field short. If the image contains no plant at all, set
+isPlant to false and return an empty suggestions array.`;
 
   const result = await visionJson<PlantSuggestions>(
     imageUrl,
     prompt,
-    SUGGEST_SCHEMA,
-    // Three candidates with prose fields don't fit in the default 1024.
-    { maxTokens: 2048 }
+    buildSuggestSchema(Boolean(home)),
+    // Three candidates with prose fields don't fit in the default 1024;
+    // the two home fields need a little more still.
+    { maxTokens: home ? 3072 : 2048 }
   );
   if ("error" in result) return result;
 

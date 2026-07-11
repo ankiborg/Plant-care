@@ -58,6 +58,9 @@ export function PlantDetailSheet({
       fd.set("description", suggestion.description);
       fd.set("careSummary", suggestion.careSummary);
       fd.set("toxicity", suggestion.toxicity);
+      if (suggestion.suitability) fd.set("suitability", suggestion.suitability);
+      if (suggestion.plantingTips)
+        fd.set("plantingTips", suggestion.plantingTips);
       if (photoUrl) fd.set("photoUrl", photoUrl);
       const result = await saveIdentifiedPlant(fd);
       if (result.status === "error") setSaveError(result.message);
@@ -131,6 +134,30 @@ export function PlantDetailSheet({
               {suggestion.toxicity}
             </p>
           </div>
+
+          {suggestion.suitability ? (
+            <div className="space-y-1 rounded-xl bg-[var(--color-surface-2)] p-3 text-sm">
+              <p className="text-[var(--color-ink)]">
+                <span className="font-medium">🏡 At my place:</span>{" "}
+                {suggestion.suitability}
+              </p>
+              {suggestion.plantingTips && (
+                <p className="text-[var(--color-muted)]">
+                  <span className="font-medium text-[var(--color-ink)]">
+                    Planting:
+                  </span>{" "}
+                  {suggestion.plantingTips}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-[var(--color-faint)]">
+              <Link href="/settings" className="underline">
+                Set your location in Settings
+              </Link>{" "}
+              to see if this plant would thrive at your place.
+            </p>
+          )}
 
           {/* Save to the Garden tab */}
           {saved ? (

@@ -56,6 +56,14 @@ model SavedPlant {
   updatedAt      DateTime      @updatedAt
 }
 
+// Single-row app settings (fixed id "app"): where the user lives, used to
+// judge whether identified plants would thrive there.
+model AppSettings {
+  id            String  @id @default("app")
+  homeLocation  String? // free text, e.g. "Umeå"
+  hardinessZone Int? // Swedish växtzon 1–8
+}
+
 model CareLog {
   id      String   @id @default(cuid())
   plant   Plant    @relation(fields: [plantId], references: [id])

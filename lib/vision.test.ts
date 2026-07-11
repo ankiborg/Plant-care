@@ -134,6 +134,30 @@ describe("suggestPlants", () => {
     expect(JSON.stringify(schema)).not.toMatch(/maxItems|minItems/);
   });
 
+  it("includes home fields in prompt and schema only when home is set", async () => {
+    create.mockResolvedValue(reply({ isPlant: true, suggestions: [] }));
+    const { suggestPlants } = await import("./vision");
+
+    await suggestPlants("https://img/x.jpg", {
+      home: { location: "Umeå", zone: 5 },
+    });
+    let params = create.mock.calls[0][0];
+    expect(params.max_tokens).toBe(3072);
+    expect(params.messages[0].content[1].text).toContain("Umeå");
+    expect(params.messages[0].content[1].text).toContain("zone 5");
+    let schemaJson = JSON.stringify(params.output_config.format.schema);
+    expect(schemaJson).toContain("suitability");
+    expect(schemaJson).toContain("plantingTips");
+    expect(schemaJson).not.toMatch(/maxItems|minItems|minLength|maxLength/);
+
+    await suggestPlants("https://img/x.jpg");
+    params = create.mock.calls[1][0];
+    expect(params.max_tokens).toBe(2048);
+    schemaJson = JSON.stringify(params.output_config.format.schema);
+    expect(schemaJson).not.toContain("suitability");
+    expect(schemaJson).not.toContain("plantingTips");
+  });
+
   it("caps the suggestions list at 3", async () => {
     const extra = {
       scientificName: "Extra plantus",
