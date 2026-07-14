@@ -4,6 +4,10 @@ Personal plant-care PWA for Annika (Swedish, non-developer, on Windows 11 +
 PowerShell — give her `;`-separated commands, never `&&`). She often writes in
 Swedish; reply in the language she uses. App UI text is English.
 
+> **Note:** `resebudget/` is a separate app (travel-budget PWA) with its own
+> CLAUDE.md, package.json, Prisma schema and Railway service. Everything
+> below concerns the plant app at the repo root.
+
 ## Workflow (important)
 
 - Develop on branch `claude/plant-app-build-error-0pl2q7`, push there only.

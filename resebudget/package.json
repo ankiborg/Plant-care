@@ -1,0 +1,41 @@
+{
+  "name": "resebudget",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "prisma migrate deploy && (npm run seed || echo 'seed failed - starting anyway') && next start",
+    "start:web": "next start",
+    "test": "vitest run",
+    "seed": "tsx --env-file-if-exists=.env prisma/seed.ts",
+    "postinstall": "prisma generate"
+  },
+  "prisma": {
+    "seed": "tsx --env-file-if-exists=.env prisma/seed.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/dm-sans": "^5.2.0",
+    "@fontsource-variable/space-grotesk": "^5.2.0",
+    "@prisma/client": "^6.10.0",
+    "clsx": "^2.1.1",
+    "idb": "^8.0.0",
+    "next": "^15.3.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "^3.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.10",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "prisma": "^6.10.0",
+    "tailwindcss": "^4.1.10",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

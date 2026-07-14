@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-num: "Space Grotesk Variable", "DM Sans Variable", ui-sans-serif, sans-serif;
+
+  --color-paper: #faf7f2;
+  --color-card: #ffffff;
+  --color-ink: #26241f;
+  --color-ink-soft: #6f6a5e;
+  --color-ink-faint: #a8a294;
+  --color-line: #e8e3d9;
+  --color-danger: #b4423a;
+  --color-ok: #4c7a43;
+  --color-amber: #c98a2e;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Siffror: Space Grotesk med tabulära siffror, enligt kravspecen. */
+.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+button {
+  touch-action: manipulation;
+}

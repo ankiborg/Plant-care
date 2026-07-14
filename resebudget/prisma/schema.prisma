@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trip {
+  id         String     @id @default(cuid())
+  name       String     @unique
+  startDate  DateTime
+  endDate    DateTime
+  isActive   Boolean    @default(false)
+  categories Category[]
+  expenses   Expense[]
+  createdAt  DateTime   @default(now())
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  tripId    String
+  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  name      String
+  budgetSek Int // hela kronor, ingen decimal
+  color     String // hex, t.ex. "#6E9E58"
+  softColor String // ljus variant för bakgrunder
+  quick     Float[] // snabbknappsbelopp i lokal valuta (Glass har 4,5)
+  sortOrder Int
+  expenses  Expense[]
+
+  @@unique([tripId, name])
+}
+
+model Expense {
+  id         String   @id @default(cuid())
+  tripId     String
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  amount     Decimal  @db.Decimal(10, 2) // belopp i originalvaluta
+  currency   String // "EUR" | "CHF" | "SEK"
+  rate       Decimal  @db.Decimal(10, 4) // kursen som gällde vid inmatning
+  amountSek  Int // uträknat, avrundat till hel krona
+  payer      String // "A" | "J"
+  note       String?
+  spentAt    DateTime @default(now()) // när utgiften skedde
+  createdAt  DateTime @default(now())
+  clientId   String   @unique // UUID från klienten, för idempotent sync
+}
+
+model FxRate {
+  currency String  @id
+  rateSek  Decimal @db.Decimal(10, 4)
+}
