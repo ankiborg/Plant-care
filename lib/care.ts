@@ -62,8 +62,20 @@ export function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Friendly, capped overdue wording. Precise counts stop after a week —
+ * "370 days late" reads as blame, not a nudge.
+ */
 export function overdueLabel(daysOverdue: number): string {
-  if (daysOverdue === 0) return "due today";
-  if (daysOverdue === 1) return "1 day overdue";
-  return `${daysOverdue} days overdue`;
+  if (daysOverdue <= 0) return "due today";
+  if (daysOverdue === 1) return "1 day late";
+  if (daysOverdue <= 7) return `${daysOverdue} days late`;
+  if (daysOverdue <= 30) return "over a week late";
+  return "long overdue";
+}
+
+/** Capitalized variant for pill/badge starts. */
+export function overdueLabelCap(daysOverdue: number): string {
+  const label = overdueLabel(daysOverdue);
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }

@@ -42,7 +42,7 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
   `{status:"error", message}` states with distinct messages for missing vs
   broken `CLOUDINARY_URL`. 8 MB photo cap (`lib/photo-limits.ts`, checked
   client + server). Body limit raised to 20 MB in `next.config.ts`.
-- `lib/vision.ts` — identifySpecies / diagnosePlant / suggestPlants (open-ended
+- `lib/vision.ts` — diagnosePlant / suggestPlants (open-ended
   ranked ID, prose fields default Swedish via `InfoLanguage` param), JSON-schema
   output, returns `{error}` instead of throwing. Tests mock `@anthropic-ai/sdk`
   and need `vi.resetModules()` (module caches the client).
@@ -80,9 +80,9 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
   as the "+ Add plant" button on `/plants` (tab stays active on `/plants/new`).
 - Screens: `app/page.tsx` Today (due tasks), `app/plants` grid with `?room=`
   filter chips, `app/plants/[id]` detail (care log, photos + compare mode,
-  AI diagnose, edit), `app/plants/new` (AI identify → photo saved on create
-  via hidden `identifyPhotoUrl`; `app/location-field.tsx` place dropdown;
-  `?speciesId=` preselects the species), `app/garden` (saved plants grid with
+  AI diagnose, edit), `app/plants/new` (species picker `species-field.tsx`
+  links to /identify for AI identification; `app/location-field.tsx` place
+  dropdown; `?speciesId=` preselects the species), `app/garden` (saved plants grid with
   `?cat=` chips; `app/garden/[id]` detail with `wiki-gallery.tsx` — shared
   hero + thumbnail strip + fullscreen, also used by the identify sheet —
   category/note edit + delete), `app/identify` (photo → up to 3
@@ -94,7 +94,7 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
 
 ## Gotchas
 
-- Species select state lives in `identify-field.tsx`; location dropdown is
+- Species select state lives in `species-field.tsx`; location dropdown is
   `app/location-field.tsx` (existing places + "New place…" text input).
 - After redeploys stale service workers can 404 chunks → tell her: unregister
   SW / clear site data / hard reload.

@@ -48,19 +48,6 @@ export async function createPlant(formData: FormData) {
     },
   });
 
-  // If a photo was used to identify this plant, keep it as the first
-  // gallery photo. Only accept our own Cloudinary URLs.
-  const identifyPhotoUrl = String(formData.get("identifyPhotoUrl") ?? "");
-  if (identifyPhotoUrl.startsWith("https://res.cloudinary.com/")) {
-    await prisma.plantPhoto.create({
-      data: {
-        plantId: plant.id,
-        url: identifyPhotoUrl,
-        note: "Identification photo",
-      },
-    });
-  }
-
   revalidatePath("/plants");
   revalidatePath("/");
   redirect(`/plants/${plant.id}`);
@@ -161,61 +148,6 @@ export async function uploadPhotoAction(
 }
 
 // --- AI photo recognition (Claude vision) ---
-
-export type IdentifyState =
-  | { status: "idle" }
-  | { status: "error"; message: string }
-  | {
-      status: "done";
-      matchedSpeciesId: string | null;
-      matchedName: string | null;
-      guess: string;
-      confidence: "high" | "medium" | "low";
-      photoUrl: string;
-    };
-
-/**
- * Identify the plant in an uploaded photo and, when possible, map it to one of
- * the seeded species. Suggests only — does not create a plant. Shaped as a
- * useActionState reducer (prevState, formData).
- */
-export async function identifyFromUpload(
-  formData: FormData
-): Promise<IdentifyState> {
-  const file = formData.get("photo");
-  if (!(file instanceof File) || file.size === 0) {
-    return { status: "error", message: "Choose a photo first." };
-  }
-  if (file.size > MAX_PHOTO_MB * 1024 * 1024) {
-    return { status: "error", message: photoTooLargeMessage(file.size) };
-  }
-
-  const uploaded = await uploadToCloudinary(file);
-  if ("error" in uploaded) return { status: "error", message: uploaded.error };
-  const url = uploaded.url;
-
-  const species = await prisma.species.findMany({
-    select: { id: true, commonName: true, scientificName: true },
-    orderBy: { commonName: "asc" },
-  });
-
-  const { identifySpecies } = await import("./vision");
-  const result = await identifySpecies(url, species);
-  if ("error" in result) return { status: "error", message: result.error };
-
-  const matched = result.matchedSpeciesId
-    ? species.find((s) => s.id === result.matchedSpeciesId) ?? null
-    : null;
-
-  return {
-    status: "done",
-    matchedSpeciesId: matched?.id ?? null,
-    matchedName: matched?.commonName ?? null,
-    guess: result.guessCommonName || result.guessScientificName || "Unknown",
-    confidence: result.confidence,
-    photoUrl: url,
-  };
-}
 
 export interface RankedSuggestion {
   scientificName: string;

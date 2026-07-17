@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { markDone } from "@/lib/actions";
-import { dueTasksFor, PlantWithRelations } from "@/lib/care";
+import { dueTasksFor, overdueLabelCap, PlantWithRelations } from "@/lib/care";
 import { prisma } from "@/lib/prisma";
 import { speciesArt } from "@/lib/species-art";
 import { SubmitButton } from "./submit-button";
@@ -57,7 +57,7 @@ function statusPill(daysOverdue: number) {
     };
   }
   return {
-    label: daysOverdue === 1 ? "1 day late" : `${daysOverdue} days late`,
+    label: overdueLabelCap(daysOverdue),
     className: "bg-[var(--color-clay-soft)] text-[var(--color-clay)]",
   };
 }
