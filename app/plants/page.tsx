@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
-import { nextWaterFor, PlantWithRelations } from "@/lib/care";
+import { nextWaterFor, overdueLabelCap, PlantWithRelations } from "@/lib/care";
 import { daysBetween, startOfUTCDay } from "@/lib/schedule";
 import { prisma } from "@/lib/prisma";
 import { speciesArt } from "@/lib/species-art";
@@ -9,8 +9,7 @@ export const dynamic = "force-dynamic";
 
 function waterLabel(next: Date): { text: string; tone: "ok" | "due" | "late" } {
   const days = daysBetween(startOfUTCDay(new Date()), next);
-  if (days < 0)
-    return { text: `${-days}d late`, tone: "late" };
+  if (days < 0) return { text: overdueLabelCap(-days), tone: "late" };
   if (days === 0) return { text: "Water today", tone: "due" };
   if (days === 1) return { text: "Water tomorrow", tone: "ok" };
   return { text: `Water in ${days}d`, tone: "ok" };

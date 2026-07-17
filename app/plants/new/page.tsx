@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { speciesArt } from "@/lib/species-art";
 import { LocationField } from "../../location-field";
 import { SubmitButton } from "../../submit-button";
-import { IdentifyField } from "./identify-field";
+import { SpeciesField } from "./species-field";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,7 @@ export default async function NewPlantPage({
       )}
 
       <form action={createPlant} className="card space-y-5 p-5">
-        <IdentifyField
+        <SpeciesField
           initialSpeciesId={initialSpeciesId}
           species={species.map((s) => ({
             id: s.id,
@@ -79,7 +79,7 @@ export default async function NewPlantPage({
           <LocationField locations={locations} />
         </label>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-[var(--color-ink)]">Pot</span>
             <select name="potSize" defaultValue="MEDIUM" className="field">

@@ -160,7 +160,7 @@ export function TopBar() {
             aria-label="Settings"
             className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-muted)] transition-colors hover:bg-[var(--color-sage)] hover:text-[var(--color-forest)]"
           >
-            <IconGear />
+            <IconSettings />
           </Link>
           <ThemeToggle />
         </div>
@@ -169,16 +169,19 @@ export function TopBar() {
   );
 }
 
-function IconGear() {
+function IconSettings() {
+  // Sliders, not a cog — a cog's spokes read as a sun next to the theme toggle.
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
       <path
-        d="M12 3.5v2.2M12 18.3v2.2M20.5 12h-2.2M5.7 12H3.5M18 6l-1.6 1.6M7.6 16.4 6 18M18 18l-1.6-1.6M7.6 7.6 6 6"
+        d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h12"
         stroke="currentColor"
         strokeWidth="1.6"
         strokeLinecap="round"
       />
+      <circle cx="16" cy="7" r="2" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="10" cy="12" r="2" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="18" cy="17" r="2" stroke="currentColor" strokeWidth="1.6" />
     </svg>
   );
 }

@@ -10,6 +10,7 @@ import {
   lastCareDate,
   nextFertFor,
   nextWaterFor,
+  overdueLabel,
   PlantWithRelations,
 } from "@/lib/care";
 import { daysBetween, startOfUTCDay } from "@/lib/schedule";
@@ -44,7 +45,7 @@ const CARE_EMOJI: Record<string, string> = {
 
 function relative(next: Date): string {
   const days = daysBetween(startOfUTCDay(new Date()), next);
-  if (days < 0) return `${-days} day${days === -1 ? "" : "s"} overdue`;
+  if (days < 0) return overdueLabel(-days);
   if (days === 0) return "today";
   if (days === 1) return "tomorrow";
   return `in ${days} days`;
@@ -55,13 +56,19 @@ function StatCard({
   glyph,
   date,
   last,
+  plantId,
+  careType,
 }: {
   label: string;
   glyph: string;
   date: Date | null;
   last?: Date;
+  plantId: string;
+  careType: string;
 }) {
-  const overdue = date ? daysBetween(startOfUTCDay(new Date()), date) < 0 : false;
+  const daysLate = date
+    ? -daysBetween(startOfUTCDay(new Date()), date)
+    : 0;
   return (
     <div className="card p-4">
       <p className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-muted)]">
@@ -75,11 +82,28 @@ function StatCard({
           </p>
           <p
             className={`text-xs ${
-              overdue ? "font-semibold text-[var(--color-clay)]" : "text-[var(--color-faint)]"
+              daysLate > 0
+                ? "font-semibold text-[var(--color-clay)]"
+                : "text-[var(--color-faint)]"
             }`}
           >
             {relative(date)}
           </p>
+          {daysLate > 30 && (
+            // Long-overdue tasks get a guilt-free reset: logs the care today
+            // so the schedule restarts from now.
+            <form action={logCareWithNote} className="mt-2">
+              <input type="hidden" name="plantId" value={plantId} />
+              <input type="hidden" name="type" value={careType} />
+              <input type="hidden" name="note" value="Started fresh" />
+              <SubmitButton
+                className="btn btn-ghost w-full py-1.5 text-xs"
+                pendingText="Resetting…"
+              >
+                Start fresh from today
+              </SubmitButton>
+            </form>
+          )}
         </>
       ) : (
         <p className="mt-1.5 text-sm text-[var(--color-faint)]">Not needed</p>
@@ -165,12 +189,16 @@ export default async function PlantDetailPage({
           glyph="💧"
           date={nextWater}
           last={lastCareDate(plant, "WATER")}
+          plantId={plant.id}
+          careType="WATER"
         />
         <StatCard
           label="Fertilize"
           glyph="🌱"
           date={nextFert}
           last={nextFert ? lastCareDate(plant, "FERTILIZE") : undefined}
+          plantId={plant.id}
+          careType="FERTILIZE"
         />
       </div>
 
