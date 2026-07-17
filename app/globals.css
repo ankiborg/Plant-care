@@ -206,3 +206,9 @@
     opacity: 1;
   }
 }
+
+/* Horizontally scrollable chip rows fade out at the right edge as a scroll hint */
+.chip-row {
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+  mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+}

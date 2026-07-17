@@ -170,6 +170,12 @@ export function IdentifyClient({
                     {confidenceLabel[s.confidence]}
                   </span>
                 </div>
+                <span
+                  aria-hidden="true"
+                  className="self-center text-lg text-[var(--color-faint)]"
+                >
+                  ›
+                </span>
               </div>
 
               <p className="text-sm text-[var(--color-ink)]">{s.description}</p>

@@ -51,6 +51,7 @@ model SavedPlant {
   suitability    String? // "would it thrive at my place" (set once settings exist)
   plantingTips   String?
   photoUrl       String? // the user's identification photo (Cloudinary)
+  wikiImageUrl   String? // cached Wikipedia thumbnail, fetched at save time
   note           String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt

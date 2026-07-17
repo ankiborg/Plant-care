@@ -14,33 +14,6 @@ interface TodayRow {
   daysOverdue: number;
 }
 
-function WaterGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-      <path
-        d="M12 3.5c3.5 4 5.5 6.6 5.5 9.4A5.5 5.5 0 0 1 12 18.4a5.5 5.5 0 0 1-5.5-5.5C6.5 10.1 8.5 7.5 12 3.5Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function FertGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-      <path
-        d="M12 20c0-5 1-8 6-11-1 5.5-2.5 8.5-6 9.5M12 20c0-4-.5-6.5-4-9 1.5 4 3 5.5 4 6.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function friendlyToday(): string {
   return new Date().toLocaleDateString("en-GB", {
     weekday: "long",
@@ -79,15 +52,21 @@ export default async function TodayPage() {
     }
   }
 
-  const groups = [
-    { type: "WATER" as const, title: "Water", Glyph: WaterGlyph },
-    { type: "FERTILIZE" as const, title: "Fertilize", Glyph: FertGlyph },
-  ].map((g) => ({
-    ...g,
-    rows: rows
-      .filter((r) => r.type === g.type)
-      .sort((a, b) => b.daysOverdue - a.daysOverdue),
-  }));
+  // One card per plant — a plant needing water AND food is one stop, not two.
+  const byPlant = new Map<
+    string,
+    { plant: PlantWithRelations; tasks: TodayRow[] }
+  >();
+  for (const row of rows) {
+    const entry = byPlant.get(row.plant.id) ?? { plant: row.plant, tasks: [] };
+    entry.tasks.push(row);
+    byPlant.set(row.plant.id, entry);
+  }
+  const plantCards = [...byPlant.values()].sort(
+    (a, b) =>
+      Math.max(...b.tasks.map((t) => t.daysOverdue)) -
+      Math.max(...a.tasks.map((t) => t.daysOverdue))
+  );
 
   const total = rows.length;
 
@@ -124,73 +103,65 @@ export default async function TodayPage() {
         </div>
       )}
 
-      {groups.map(
-        (group) =>
-          group.rows.length > 0 && (
-            <section key={group.type} className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <span className="text-[var(--color-moss)]">
-                  <group.Glyph />
+      <ul className="space-y-2.5">
+        {plantCards.map(({ plant, tasks }) => (
+          <li key={plant.id} className="card space-y-2.5 p-3.5">
+            <Link
+              href={`/plants/${plant.id}`}
+              className="flex min-w-0 items-center gap-3"
+            >
+              <img
+                src={plant.photos[0]?.url ?? speciesArt(plant.species.commonName)}
+                alt=""
+                className="h-11 w-11 shrink-0 rounded-full object-cover"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold text-[var(--color-ink)]">
+                  {plant.nickname}
                 </span>
-                <h2 className="text-base font-semibold text-[var(--color-ink)]">
-                  {group.title}
-                </h2>
-                <span className="pill bg-[var(--color-surface-2)] text-[var(--color-muted)]">
-                  {group.rows.length}
+                <span className="block truncate text-xs text-[var(--color-faint)]">
+                  {plant.location ?? plant.species.commonName}
                 </span>
-              </div>
+              </span>
+              <span aria-hidden="true" className="text-lg text-[var(--color-faint)]">
+                ›
+              </span>
+            </Link>
 
-              <ul className="space-y-2.5">
-                {group.rows.map((row) => {
-                  const pill = statusPill(row.daysOverdue);
-                  return (
-                    <li
-                      key={`${row.plant.id}-${row.type}`}
-                      className="card flex items-center gap-3 p-3.5"
+            {tasks.map((task) => {
+              const pill = statusPill(task.daysOverdue);
+              return (
+                <div
+                  key={task.type}
+                  className="flex items-center justify-between gap-2 border-t border-[var(--color-line)] pt-2.5"
+                >
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span aria-hidden="true">
+                      {task.type === "WATER" ? "💧" : "🌱"}
+                    </span>
+                    <span className="text-sm font-medium text-[var(--color-ink)]">
+                      {task.type === "WATER" ? "Water" : "Fertilize"}
+                    </span>
+                    <span className={`pill shrink-0 ${pill.className}`}>
+                      {pill.label}
+                    </span>
+                  </span>
+                  <form action={markDone}>
+                    <input type="hidden" name="plantId" value={plant.id} />
+                    <input type="hidden" name="type" value={task.type} />
+                    <SubmitButton
+                      className="btn btn-primary shrink-0 px-4 py-1.5 text-sm"
+                      pendingText="…"
                     >
-                      <Link
-                        href={`/plants/${row.plant.id}`}
-                        className="flex min-w-0 flex-1 items-center gap-3"
-                      >
-                        <img
-                          src={
-                            row.plant.photos[0]?.url ??
-                            speciesArt(row.plant.species.commonName)
-                          }
-                          alt=""
-                          className="h-11 w-11 shrink-0 rounded-full object-cover"
-                        />
-                        <span className="min-w-0">
-                          <span className="block truncate font-semibold text-[var(--color-ink)]">
-                            {row.plant.nickname}
-                          </span>
-                          <span className="mt-1 flex items-center gap-1.5">
-                            <span className={`pill shrink-0 ${pill.className}`}>
-                              {pill.label}
-                            </span>
-                            <span className="min-w-0 truncate text-xs text-[var(--color-faint)]">
-                              {row.plant.location ?? row.plant.species.commonName}
-                            </span>
-                          </span>
-                        </span>
-                      </Link>
-                      <form action={markDone}>
-                        <input type="hidden" name="plantId" value={row.plant.id} />
-                        <input type="hidden" name="type" value={row.type} />
-                        <SubmitButton
-                          className="btn btn-primary shrink-0"
-                          pendingText="…"
-                        >
-                          Done
-                        </SubmitButton>
-                      </form>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )
-      )}
+                      Done
+                    </SubmitButton>
+                  </form>
+                </div>
+              );
+            })}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

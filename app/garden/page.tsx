@@ -48,7 +48,7 @@ export default async function GardenPage({
 
       <nav
         aria-label="Filter by category"
-        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+        className="chip-row -mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
       >
         <Link href="/garden" className={`${chipBase} ${!activeCat ? chipOn : chipOff}`}>
           All
@@ -88,12 +88,13 @@ export default async function GardenPage({
               href={`/garden/${p.id}`}
               className="card space-y-2 p-3 transition-shadow hover:shadow-md"
             >
-              {p.photoUrl ? (
+              {p.photoUrl || p.wikiImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={p.photoUrl}
+                  src={(p.photoUrl ?? p.wikiImageUrl)!}
                   alt={p.scientificName}
                   loading="lazy"
+                  referrerPolicy="no-referrer"
                   className="h-28 w-full rounded-xl bg-[var(--color-surface-2)] object-cover"
                 />
               ) : (
@@ -104,10 +105,15 @@ export default async function GardenPage({
                   className="h-28 w-full rounded-xl bg-[var(--color-surface-2)] object-cover"
                 />
               )}
-              <div className="min-w-0">
+              <div className="flex min-w-0 items-center justify-between gap-1">
                 <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
                   {p.swedishName || p.englishName}
                 </p>
+                <span aria-hidden="true" className="shrink-0 text-[var(--color-faint)]">
+                  ›
+                </span>
+              </div>
+              <div className="min-w-0">
                 <p className="truncate text-xs italic text-[var(--color-muted)]">
                   {p.scientificName}
                 </p>

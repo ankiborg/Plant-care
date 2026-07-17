@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { RankedSuggestion, saveIdentifiedPlant } from "@/lib/actions";
 import { SAVED_CATEGORIES, SavedCategoryKey } from "@/lib/saved-plants";
 import { WikiGallery } from "./wiki-gallery";
+import { lookupImage } from "./wiki-image";
 
 const confidenceLabel = {
   high: "high confidence",
@@ -62,6 +63,12 @@ export function PlantDetailSheet({
       if (suggestion.plantingTips)
         fd.set("plantingTips", suggestion.plantingTips);
       if (photoUrl) fd.set("photoUrl", photoUrl);
+      // Cache the Wikipedia thumbnail so the Garden card always has a real
+      // photo (already resolved by the result card — instant from cache).
+      const wikiImage = await lookupImage(suggestion.scientificName).catch(
+        () => null
+      );
+      if (wikiImage) fd.set("wikiImageUrl", wikiImage);
       const result = await saveIdentifiedPlant(fd);
       if (result.status === "error") setSaveError(result.message);
       else if (result.status === "done") setSaved(category);

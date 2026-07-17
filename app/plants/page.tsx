@@ -82,7 +82,7 @@ export default async function PlantsPage({
       {rooms.length > 0 && (
         <nav
           aria-label="Filter by place"
-          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+          className="chip-row -mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
         >
           <Link
             href="/plants"
