@@ -22,7 +22,7 @@ async function fetchImage(scientificName: string): Promise<string | null> {
   return null;
 }
 
-function lookupImage(scientificName: string): Promise<string | null> {
+export function lookupImage(scientificName: string): Promise<string | null> {
   let promise = lookups.get(scientificName);
   if (!promise) {
     promise = fetchImage(scientificName);

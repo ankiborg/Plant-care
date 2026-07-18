@@ -78,7 +78,12 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
   `deleteSavedPlant`. No care schedule — knowledge entries only.
 - Nav is 4 tabs: Today, Plants, Garden, Identify. No Add tab — adding lives
   as the "+ Add plant" button on `/plants` (tab stays active on `/plants/new`).
-- Screens: `app/page.tsx` Today (due tasks), `app/plants` grid with `?room=`
+- Overdue wording is capped via `overdueLabel` in `lib/care.ts` (max "long
+  overdue" — never raw day counts past a week); long-overdue stat cards offer
+  a "Start fresh" reset. `register-sw.tsx` shows a reload banner on SW update.
+  SavedPlant caches `wikiImageUrl` (upload.wikimedia.org only) at save time
+  for the Garden grid.
+- Screens: `app/page.tsx` Today (due tasks, one card per plant), `app/plants` grid with `?room=`
   filter chips, `app/plants/[id]` detail (care log, photos + compare mode,
   AI diagnose, edit), `app/plants/new` (species picker `species-field.tsx`
   links to /identify for AI identification; `app/location-field.tsx` place

@@ -268,9 +268,14 @@ export async function saveIdentifiedPlant(
       toxicity: text("toxicity"),
       suitability: text("suitability") || null,
       plantingTips: text("plantingTips") || null,
-      // Same trust rule as createPlant: only our own Cloudinary uploads.
+      // Trust rules: only our own Cloudinary uploads / Wikimedia thumbnails.
       photoUrl: photoUrl.startsWith("https://res.cloudinary.com/")
         ? photoUrl
+        : null,
+      wikiImageUrl: text("wikiImageUrl").startsWith(
+        "https://upload.wikimedia.org/"
+      )
+        ? text("wikiImageUrl")
         : null,
     },
   });
