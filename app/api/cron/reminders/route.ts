@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PlantWithRelations } from "@/lib/care";
 import { prisma } from "@/lib/prisma";
 import {
+  probeNtfy,
   resolveAppUrl,
   resolveNtfyServer,
   resolveNtfyTopic,
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
   }
 
   const topic = resolveNtfyTopic();
+  const server = resolveNtfyServer();
   let plants: number | null = null;
   let database = "ok";
 
@@ -33,9 +35,16 @@ export async function GET(req: NextRequest) {
     database = err instanceof Error ? err.message : String(err);
   }
 
+  // Can this host actually reach ntfy? Both transports, no notification.
+  const ntfyReachable = await probeNtfy(server).catch((err: unknown) => ({
+    fetch: err instanceof Error ? err.message : String(err),
+    ipv4: "not probed",
+  }));
+
   return NextResponse.json({
     ntfyTopic: topic ? "configured" : "missing",
-    ntfyServer: resolveNtfyServer(),
+    ntfyServer: server,
+    ntfyReachable,
     // Only used for the tap-through link; reminders go out without it.
     appUrl: resolveAppUrl() ? "configured" : "missing",
     database,
@@ -92,6 +101,12 @@ export async function POST(req: NextRequest) {
     onError: (plant, error) =>
       console.error(`[reminders] ${plant.nickname}: ${error}`),
   });
+
+  if (report.sentViaFallback > 0) {
+    console.warn(
+      `[reminders] ${report.sentViaFallback} notification(s) needed the IPv4 fallback — fetch to ntfy is failing on this host`
+    );
+  }
 
   // Every notification bounced — the run is broken, not merely imperfect.
   const allFailed = report.sent === 0 && report.failures.length > 0;

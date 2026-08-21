@@ -110,6 +110,11 @@ Notification deep links open `/plants/<id>` inside the installed app.
 - A failed notification never stops the others: each one is retried (network
   errors, 429, 5xx) and anything still failing is listed per plant in the
   response.
+- If every `fetch` to ntfy dies at the network layer (Node prefers IPv6, and
+  a host without working IPv6 egress reports only "fetch failed"), the run
+  retries over an IPv4-pinned connection. `sentViaFallback` in the response
+  counts how many notifications needed it — anything above 0 means outbound
+  IPv6 on the app host is broken.
 - What the status codes mean when a run goes red:
 
   | Status | Meaning | Fix |
@@ -120,9 +125,10 @@ Notification deep links open `/plants/<id>` inside the installed app.
   | `200` | Sent — the body reports `sent` and any per-plant `failures` | — |
 
 - `GET /api/cron/reminders` (same secret header) is a config check: it reports
-  whether `NTFY_TOPIC`/`APP_URL` are set and whether the database answers,
-  **without sending anything**. The workflow calls it automatically after a
-  failed run, so the Actions log shows what was misconfigured.
+  whether `NTFY_TOPIC`/`APP_URL` are set, whether the database answers, and
+  whether ntfy is reachable over each transport (`ntfyReachable`), **without
+  sending anything**. The workflow calls it automatically after a failed run,
+  so the Actions log shows what was misconfigured.
 
 > ⏰ **Timezone caveat:** GitHub cron is UTC and ignores DST. `0 7 * * *` ≈
 > 08:00 in Swedish winter and 09:00 in Swedish summer. Edit the cron hour in
