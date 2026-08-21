@@ -7,52 +7,89 @@ jobs:
   remind:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger reminders
+      # The app works out who needs watering; this runner delivers the
+      # notifications, because Railway's egress to ntfy.sh times out
+      # (connect ETIMEDOUT on 443, no IPv6 at all).
+      #
+      # The prepared payloads contain plant nicknames — never echo them.
+      - name: Send plant reminders
         shell: bash
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_SERVER: ${{ vars.NTFY_SERVER || 'https://ntfy.sh' }}
         run: |
           set -uo pipefail
 
-          if [ -z "${APP_URL:-}" ]; then
-            echo "::error::Repository secret APP_URL is missing (Settings → Secrets and variables → Actions)."
-            exit 1
-          fi
-          if [ -z "${CRON_SECRET:-}" ]; then
-            echo "::error::Repository secret CRON_SECRET is missing (Settings → Secrets and variables → Actions)."
-            exit 1
-          fi
+          for name in APP_URL CRON_SECRET NTFY_TOPIC; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Repository secret $name is missing (Settings → Secrets and variables → Actions)."
+              exit 1
+            fi
+          done
 
           url="${APP_URL%/}/api/cron/reminders"
           status=""
 
           # The app can be cold-starting on Railway, so give it a few tries.
           for attempt in 1 2 3; do
-            status=$(curl -sS -o response.txt -w '%{http_code}' -m 90 \
-              -X POST "$url" -H "x-cron-secret: $CRON_SECRET") || status="000"
+            status=$(curl -sS -o due.json -w '%{http_code}' -m 90 \
+              -X POST "$url?mode=prepare" -H "x-cron-secret: $CRON_SECRET") || status="000"
             [ -z "$status" ] && status="000"
 
-            echo "Attempt $attempt: HTTP $status"
-            echo "Response: $(cat response.txt 2>/dev/null | head -c 2000)"
+            echo "Asking the app who is due — attempt $attempt: HTTP $status"
+            [ "$status" = "200" ] && break
 
-            if [ "$status" = "200" ]; then
-              echo "Reminders sent."
-              exit 0
-            fi
-
-            # A wrong secret or a misconfigured app service won't fix itself.
             if [ "$status" = "401" ]; then
               echo "::error::Unauthorized — CRON_SECRET here does not match the one on the app service."
               exit 1
             fi
 
+            # Safe to show: this path returns only an error message.
+            echo "Response: $(head -c 500 due.json 2>/dev/null)"
             if [ "$attempt" -lt 3 ]; then sleep $((attempt * 15)); fi
           done
 
-          echo "Config check (no notifications sent):"
-          curl -sS -m 30 -X GET "$url" -H "x-cron-secret: $CRON_SECRET" | head -c 2000 || true
-          echo
+          if [ "$status" != "200" ]; then
+            echo "Config check (no notifications sent):"
+            curl -sS -m 30 -X GET "$url" -H "x-cron-secret: $CRON_SECRET" | head -c 2000 || true
+            echo
+            echo "::error::Could not get today's due plants from the app (last status $status)."
+            exit 1
+          fi
 
-          echo "::error::Reminder run failed after 3 attempts (last status $status)."
-          exit 1
+          count=$(jq '.notifications | length' due.json)
+          plants=$(jq '.plants' due.json)
+          build_failures=$(jq '.failures | length' due.json)
+          echo "Plants: $plants · due today: $count · could not be prepared: $build_failures"
+
+          if [ "$count" -eq 0 ]; then
+            echo "Nothing due today."
+            exit 0
+          fi
+
+          sent=0
+          failed=0
+          for i in $(seq 0 $((count - 1))); do
+            # The topic is added here, from the repo secret, so GitHub masks it
+            # even if something later prints it.
+            payload=$(jq -c --arg topic "$NTFY_TOPIC" ".notifications[$i] + {topic: \$topic}" due.json)
+
+            code=$(printf '%s' "$payload" | curl -sS -o /dev/null -w '%{http_code}' -m 30 \
+              -X POST "${NTFY_SERVER%/}" -H 'Content-Type: application/json' --data-binary @-) || code="000"
+            [ -z "$code" ] && code="000"
+
+            if [ "$code" = "200" ]; then
+              sent=$((sent + 1))
+            else
+              failed=$((failed + 1))
+              echo "Notification $((i + 1))/$count failed: HTTP $code"
+            fi
+          done
+
+          echo "Sent $sent of $count."
+          if [ "$failed" -gt 0 ]; then
+            echo "::error::$failed of $count notifications failed to send."
+            exit 1
+          fi

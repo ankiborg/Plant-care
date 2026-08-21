@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlantWithRelations } from "./care";
 import {
   describeError,
+  prepareReminders,
   reminderMessage,
   resolveAppUrl,
   resolveNtfyServer,
@@ -161,6 +162,46 @@ describe("reminderMessage", () => {
     expect(reminderMessage("Basilika", ["FERTILIZE"]).message).toBe(
       "Basilika needs fertilizing today."
     );
+  });
+});
+
+describe("prepareReminders", () => {
+  it("returns one payload per due plant, without the topic", () => {
+    const result = prepareReminders(
+      [plant(), plant({ id: "p2", nickname: "Fresh", acquiredAt: day("2026-06-01") })],
+      { appUrl: "https://plants.example.com", today: day("2026-06-01") }
+    );
+
+    expect(result.due).toBe(1);
+    expect(result.failures).toEqual([]);
+    expect(result.prepared).toEqual([
+      {
+        plantId: "p1",
+        payload: {
+          title: "💧 Water: Basilika",
+          message: "Basilika needs watering today.",
+          tags: ["potted_plant"],
+          click: "https://plants.example.com/plants/p1",
+        },
+      },
+    ]);
+    // The topic is the secret — whoever delivers the payload adds it.
+    expect(result.prepared[0].payload).not.toHaveProperty("topic");
+  });
+
+  it("omits the deep link when no app URL is known", () => {
+    const result = prepareReminders([plant()], { today: day("2026-06-01") });
+    expect(result.prepared[0].payload).not.toHaveProperty("click");
+  });
+
+  it("reports a broken plant row rather than throwing", () => {
+    const broken = plant({ id: "bad" });
+    (broken as { species: unknown }).species = null;
+
+    const result = prepareReminders([broken, plant()], { today: day("2026-06-01") });
+
+    expect(result.prepared).toHaveLength(1);
+    expect(result.failures[0].plantId).toBe("bad");
   });
 });
 

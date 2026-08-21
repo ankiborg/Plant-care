@@ -28,9 +28,10 @@ Claude vision (`claude-opus-4-8`) for species ID + health diagnosis, PWA
 (07:00 UTC → `/api/cron/reminders`, guarded by `x-cron-secret`).
 
 Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
-`ANTHROPIC_API_KEY`, `NTFY_TOPIC`, `APP_URL` (public URL, not
-`.railway.internal` — optional, falls back to `RAILWAY_PUBLIC_DOMAIN`),
-`CRON_SECRET`.
+`ANTHROPIC_API_KEY`, `APP_URL` (public URL, not `.railway.internal` —
+optional, falls back to `RAILWAY_PUBLIC_DOMAIN`), `CRON_SECRET`.
+GitHub repo secrets: `APP_URL`, `CRON_SECRET`, `NTFY_TOPIC` (the runner
+sends the notifications).
 
 ## Architecture
 
@@ -39,19 +40,24 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
   DORMANT Nov–Feb ×1.5. No fertilizing Nov–Feb (pushed to Mar 1). UTC day math.
 - `lib/care.ts` — next-due/last-done helpers ("last watered" falls back to
   `acquiredAt`).
-- `lib/reminders.ts` — the daily ntfy run (env resolution, notification copy,
-  per-plant send with retries). Pure and fetch-injectable, so the route is
-  just Prisma + wiring. Nothing in it throws: per-plant errors come back in
-  the report, because one bad plant used to kill the whole run. Route returns
+- `lib/reminders.ts` — the daily ntfy run. `prepareReminders` (pure, no
+  network) works out who is due and builds the ntfy payloads **without the
+  topic**; `sendReminders` publishes them with retries. Nothing throws:
+  per-plant errors come back in the report, because one bad plant used to kill
+  the whole run.
+- Delivery lives in the GitHub workflow, not the app: Railway cannot reach
+  ntfy.sh (`connect ETIMEDOUT 443`, no IPv6 route), so the cron calls
+  `POST /api/cron/reminders?mode=prepare` and the runner adds the topic (repo
+  secret `NTFY_TOPIC`) and POSTs each notification. The workflow must never
+  echo a payload — nicknames, public log. The app-side send path
+  (`POST` with no `mode`) is kept for a host that can reach ntfy: it returns
   500 (misconfigured/DB down), 502 (every notification failed) or 200 with a
-  `{plants, due, sent, failures}` report; `GET` on the same path is a
-  send-nothing config check (it also probes ntfy over both transports).
-  Response bodies land in a public Actions log — keep secrets and nicknames
-  out of them. Outbound sends go through `fetch` first and fall back to an
-  IPv4-pinned `node:https` request when every attempt fails at the network
-  layer (`fetch failed` with nothing else to go on). `node:http(s)` must be
-  imported statically — a computed `await import()` passes tests and then
-  throws MODULE_NOT_FOUND inside the bundled route.
+  `{plants, due, sent, sentViaFallback, failures}` report, and falls back to an
+  IPv4-pinned `node:https` request when every `fetch` dies at the network layer.
+  `node:http(s)` must be imported statically — a computed `await import()`
+  passes tests and then throws MODULE_NOT_FOUND inside the bundled route.
+  `GET` on the same path is a send-nothing config check that also probes ntfy
+  over both transports.
 - `lib/actions.ts` — all server actions. Photo paths never throw: they return
   `{status:"error", message}` states with distinct messages for missing vs
   broken `CLOUDINARY_URL`. 8 MB photo cap (`lib/photo-limits.ts`, checked
