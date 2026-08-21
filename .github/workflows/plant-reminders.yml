@@ -8,9 +8,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger reminders
-        run: |
-          curl -fsS -X POST "$APP_URL/api/cron/reminders" \
-            -H "x-cron-secret: $CRON_SECRET"
+        shell: bash
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -uo pipefail
+
+          if [ -z "${APP_URL:-}" ]; then
+            echo "::error::Repository secret APP_URL is missing (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::Repository secret CRON_SECRET is missing (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+          url="${APP_URL%/}/api/cron/reminders"
+          status=""
+
+          # The app can be cold-starting on Railway, so give it a few tries.
+          for attempt in 1 2 3; do
+            status=$(curl -sS -o response.txt -w '%{http_code}' -m 90 \
+              -X POST "$url" -H "x-cron-secret: $CRON_SECRET") || status="000"
+            [ -z "$status" ] && status="000"
+
+            echo "Attempt $attempt: HTTP $status"
+            echo "Response: $(cat response.txt 2>/dev/null | head -c 2000)"
+
+            if [ "$status" = "200" ]; then
+              echo "Reminders sent."
+              exit 0
+            fi
+
+            # A wrong secret or a misconfigured app service won't fix itself.
+            if [ "$status" = "401" ]; then
+              echo "::error::Unauthorized — CRON_SECRET here does not match the one on the app service."
+              exit 1
+            fi
+
+            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 15)); fi
+          done
+
+          echo "Config check (no notifications sent):"
+          curl -sS -m 30 -X GET "$url" -H "x-cron-secret: $CRON_SECRET" | head -c 2000 || true
+          echo
+
+          echo "::error::Reminder run failed after 3 attempts (last status $status)."
+          exit 1

@@ -45,7 +45,8 @@ Run the engine's unit tests any time with `npm test`.
 | `DATABASE_URL` | ✅ (use `${{Postgres.DATABASE_URL}}` reference) | — | ✅ (use the **public** URL from the Postgres service's Variables tab) | Railway → Postgres service → Variables |
 | `CLOUDINARY_URL` | ✅ | — | ✅ | Cloudinary dashboard → API Keys → "API environment variable" |
 | `NTFY_TOPIC` | ✅ | — | ✅ | A long random string **you invent** — the topic name is the secret. Subscribe to the same topic in the ntfy Android app. |
-| `APP_URL` | ✅ | ✅ | ✅ | Your Railway public URL, e.g. `https://plant-care-production.up.railway.app` (no trailing slash) |
+| `APP_URL` | ➖ (recommended) | ✅ | ✅ | Your Railway public URL, e.g. `https://plant-care-production.up.railway.app` (no trailing slash). On Railway it falls back to the injected `RAILWAY_PUBLIC_DOMAIN`; without either, reminders still arrive, just without a tap-through link. |
+| `NTFY_SERVER` | ➖ optional | — | ➖ optional | Only if you self-host ntfy. Defaults to `https://ntfy.sh`. |
 | `CRON_SECRET` | ✅ | ✅ | ✅ | Another long random string you invent |
 
 Generate a random string in PowerShell:
@@ -104,6 +105,24 @@ Notification deep links open `/plants/<id>` inside the installed app.
   again every day until you mark the task done — by design.
 - `.github/workflows/plant-reminders.yml` calls it daily at **07:00 UTC**
   (also runnable manually via *Actions → plant-reminders → Run workflow*).
+  It prints the response body and retries a cold-starting app, so a red run
+  says *why* it failed instead of just "exit code 22".
+- A failed notification never stops the others: each one is retried (network
+  errors, 429, 5xx) and anything still failing is listed per plant in the
+  response.
+- What the status codes mean when a run goes red:
+
+  | Status | Meaning | Fix |
+  |---|---|---|
+  | `401` | `CRON_SECRET` in GitHub ≠ `CRON_SECRET` on Railway | Re-paste the same string in both places |
+  | `500` | `NTFY_TOPIC` missing on the app service, or the database is unreachable | Check the app service's Variables tab in Railway |
+  | `502` | ntfy rejected/dropped **every** notification | Check the `failures` in the body (e.g. `HTTP 429` = rate-limited) |
+  | `200` | Sent — the body reports `sent` and any per-plant `failures` | — |
+
+- `GET /api/cron/reminders` (same secret header) is a config check: it reports
+  whether `NTFY_TOPIC`/`APP_URL` are set and whether the database answers,
+  **without sending anything**. The workflow calls it automatically after a
+  failed run, so the Actions log shows what was misconfigured.
 
 > ⏰ **Timezone caveat:** GitHub cron is UTC and ignores DST. `0 7 * * *` ≈
 > 08:00 in Swedish winter and 09:00 in Swedish summer. Edit the cron hour in

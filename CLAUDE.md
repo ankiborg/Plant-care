@@ -29,7 +29,8 @@ Claude vision (`claude-opus-4-8`) for species ID + health diagnosis, PWA
 
 Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
 `ANTHROPIC_API_KEY`, `NTFY_TOPIC`, `APP_URL` (public URL, not
-`.railway.internal`), `CRON_SECRET`.
+`.railway.internal` — optional, falls back to `RAILWAY_PUBLIC_DOMAIN`),
+`CRON_SECRET`.
 
 ## Architecture
 
@@ -38,6 +39,14 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
   DORMANT Nov–Feb ×1.5. No fertilizing Nov–Feb (pushed to Mar 1). UTC day math.
 - `lib/care.ts` — next-due/last-done helpers ("last watered" falls back to
   `acquiredAt`).
+- `lib/reminders.ts` — the daily ntfy run (env resolution, notification copy,
+  per-plant send with retries). Pure and fetch-injectable, so the route is
+  just Prisma + wiring. Nothing in it throws: per-plant errors come back in
+  the report, because one bad plant used to kill the whole run. Route returns
+  500 (misconfigured/DB down), 502 (every notification failed) or 200 with a
+  `{plants, due, sent, failures}` report; `GET` on the same path is a
+  send-nothing config check. Response bodies land in a public Actions log —
+  keep secrets and nicknames out of them.
 - `lib/actions.ts` — all server actions. Photo paths never throw: they return
   `{status:"error", message}` states with distinct messages for missing vs
   broken `CLOUDINARY_URL`. 8 MB photo cap (`lib/photo-limits.ts`, checked
