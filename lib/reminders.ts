@@ -317,6 +317,64 @@ export async function probeNtfy(
   return { fetch: viaFetch, ipv4: viaNode.ok ? "ok" : viaNode.error };
 }
 
+export interface PreparedReminder {
+  plantId: string;
+  /** ntfy JSON payload minus `topic` — whoever publishes it adds that. */
+  payload: Record<string, unknown>;
+}
+
+export interface PreparedReminders {
+  due: number;
+  prepared: PreparedReminder[];
+  failures: ReminderFailure[];
+}
+
+/**
+ * Works out who needs a notification today and what it should say. No
+ * network: this is the half that has to run where the database is, and it
+ * is deliberately separate from delivery, because the host holding the
+ * database cannot always reach ntfy.
+ *
+ * The topic is left out on purpose — it is the secret, and a payload
+ * prepared here may travel to whoever can actually deliver it.
+ */
+export function prepareReminders(
+  plants: PlantWithRelations[],
+  { appUrl = null, today = new Date() }: { appUrl?: string | null; today?: Date } = {}
+): PreparedReminders {
+  const result: PreparedReminders = { due: 0, prepared: [], failures: [] };
+
+  for (const plant of plants) {
+    try {
+      const due = dueTasksFor(plant, today);
+      if (due.length === 0) continue;
+      result.due++;
+
+      const { title, message } = reminderMessage(
+        plant.nickname,
+        due.map((task) => task.type)
+      );
+
+      result.prepared.push({
+        plantId: plant.id,
+        payload: {
+          title,
+          message,
+          tags: ["potted_plant"],
+          ...(appUrl ? { click: `${appUrl}/plants/${plant.id}` } : {}),
+        },
+      });
+    } catch (err) {
+      result.failures.push({
+        plantId: plant.id,
+        error: `could not build reminder: ${describeError(err)}`,
+      });
+    }
+  }
+
+  return result;
+}
+
 /**
  * Publishes one notification, retrying transient failures (network errors,
  * 429, 5xx). A 4xx other than 429 won't fix itself, so it fails fast.
@@ -391,58 +449,40 @@ export async function sendReminders({
   fallbackPublish = publishViaNode,
   onError,
 }: SendRemindersOptions): Promise<ReminderReport> {
+  const { due, prepared, failures } = prepareReminders(plants, { appUrl, today });
+
   const report: ReminderReport = {
     plants: plants.length,
-    due: 0,
+    due,
     sent: 0,
     sentViaFallback: 0,
-    failures: [],
+    failures: [...failures],
   };
+
+  const plantById = new Map(plants.map((plant) => [plant.id, plant]));
+  for (const failure of failures) {
+    const plant = plantById.get(failure.plantId);
+    if (plant) onError?.(plant, failure.error);
+  }
 
   await preferIPv4();
 
-  for (const plant of plants) {
-    let payload: Record<string, unknown>;
-
-    try {
-      const due = dueTasksFor(plant, today);
-      if (due.length === 0) continue;
-      report.due++;
-
-      const { title, message } = reminderMessage(
-        plant.nickname,
-        due.map((task) => task.type)
-      );
-
-      payload = {
-        topic,
-        title,
-        message,
-        tags: ["potted_plant"],
-        // JSON publishing (topic in the body) keeps emoji in titles intact,
-        // unlike the header-based API.
-        ...(appUrl ? { click: `${appUrl}/plants/${plant.id}` } : {}),
-      };
-    } catch (err) {
-      const error = `could not build reminder: ${describeError(err)}`;
-      report.failures.push({ plantId: plant.id, error });
-      onError?.(plant, error);
-      continue;
-    }
-
-    const result = await publish(server, payload, {
-      fetchImpl,
-      attempts,
-      retryDelayMs,
-      fallbackPublish,
-    });
+  for (const { plantId, payload } of prepared) {
+    // JSON publishing (topic in the body) keeps emoji in titles intact,
+    // unlike the header-based API.
+    const result = await publish(
+      server,
+      { topic, ...payload },
+      { fetchImpl, attempts, retryDelayMs, fallbackPublish }
+    );
 
     if (result.ok) {
       report.sent++;
       if (result.viaFallback) report.sentViaFallback++;
     } else {
-      report.failures.push({ plantId: plant.id, error: result.error });
-      onError?.(plant, result.error);
+      report.failures.push({ plantId, error: result.error });
+      const plant = plantById.get(plantId);
+      if (plant) onError?.(plant, result.error);
     }
   }
 

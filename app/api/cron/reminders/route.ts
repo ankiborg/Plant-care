@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PlantWithRelations } from "@/lib/care";
 import { prisma } from "@/lib/prisma";
 import {
+  prepareReminders,
   probeNtfy,
   resolveAppUrl,
   resolveNtfyServer,
@@ -53,22 +54,35 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * Called daily by the plant-reminders GitHub Action. Sends one ntfy
- * notification per plant with any due/overdue task. Overdue plants keep
- * pinging every day until the task is marked done — intentional, no dedup.
+ * Called daily by the plant-reminders GitHub Action.
+ *
+ * Two modes, because the host that holds the database is not always the host
+ * that can reach ntfy — Railway's egress to ntfy.sh times out, so the runner
+ * does the delivering:
+ *
+ * - `?mode=prepare` — works out who is due and returns the notification
+ *   payloads (without the topic). Sends nothing, needs no NTFY_TOPIC here.
+ * - default — sends them itself, one ntfy notification per plant with any
+ *   due/overdue task. Overdue plants keep pinging every day until the task is
+ *   marked done — intentional, no dedup.
  *
  * Status codes are what the workflow reports on, so they mean something:
  * 401 wrong secret · 500 misconfigured or DB down · 502 ntfy rejected every
- * notification · 200 everything (or at least something) went out, with any
- * per-plant failures listed in the body.
+ * notification · 200 the run did its job, with any per-plant failures listed
+ * in the body.
+ *
+ * Prepared payloads contain plant nicknames: the caller must not echo them
+ * into a public log.
  */
 export async function POST(req: NextRequest) {
   if (unauthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  const prepareOnly = req.nextUrl.searchParams.get("mode") === "prepare";
+
   const topic = resolveNtfyTopic();
-  if (!topic) {
+  if (!topic && !prepareOnly) {
     return NextResponse.json(
       {
         error:
@@ -93,10 +107,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const appUrl = resolveAppUrl();
+
+  if (prepareOnly) {
+    const { due, prepared, failures } = prepareReminders(plants, { appUrl });
+    for (const failure of failures) {
+      console.error(`[reminders] ${failure.plantId}: ${failure.error}`);
+    }
+
+    return NextResponse.json({
+      plants: plants.length,
+      due,
+      notifications: prepared.map((item) => item.payload),
+      failures,
+    });
+  }
+
   const report = await sendReminders({
     plants,
-    topic,
-    appUrl: resolveAppUrl(),
+    topic: topic as string,
+    appUrl,
     server: resolveNtfyServer(),
     onError: (plant, error) =>
       console.error(`[reminders] ${plant.nickname}: ${error}`),

@@ -44,7 +44,7 @@ Run the engine's unit tests any time with `npm test`.
 |---|---|---|---|---|
 | `DATABASE_URL` | ✅ (use `${{Postgres.DATABASE_URL}}` reference) | — | ✅ (use the **public** URL from the Postgres service's Variables tab) | Railway → Postgres service → Variables |
 | `CLOUDINARY_URL` | ✅ | — | ✅ | Cloudinary dashboard → API Keys → "API environment variable" |
-| `NTFY_TOPIC` | ✅ | — | ✅ | A long random string **you invent** — the topic name is the secret. Subscribe to the same topic in the ntfy Android app. |
+| `NTFY_TOPIC` | ➖ optional | ✅ | ✅ | A long random string **you invent** — the topic name is the secret. Subscribe to the same topic in the ntfy Android app. The **GitHub secret** is the one the daily reminders use; Railway only needs it if you send from the app (see below). |
 | `APP_URL` | ➖ (recommended) | ✅ | ✅ | Your Railway public URL, e.g. `https://plant-care-production.up.railway.app` (no trailing slash). On Railway it falls back to the injected `RAILWAY_PUBLIC_DOMAIN`; without either, reminders still arrive, just without a tap-through link. |
 | `NTFY_SERVER` | ➖ optional | — | ➖ optional | Only if you self-host ntfy. Defaults to `https://ntfy.sh`. |
 | `CRON_SECRET` | ✅ | ✅ | ✅ | Another long random string you invent |
@@ -99,36 +99,43 @@ Notification deep links open `/plants/<id>` inside the installed app.
 
 ## Daily reminders (ntfy.sh)
 
-- `POST /api/cron/reminders` (requires header `x-cron-secret: $CRON_SECRET`)
-  computes due tasks with the same engine and sends **one ntfy notification
-  per due plant** (water + fertilize combined into one). Overdue plants ping
-  again every day until you mark the task done — by design.
-- `.github/workflows/plant-reminders.yml` calls it daily at **07:00 UTC**
-  (also runnable manually via *Actions → plant-reminders → Run workflow*).
-  It prints the response body and retries a cold-starting app, so a red run
-  says *why* it failed instead of just "exit code 22".
-- A failed notification never stops the others: each one is retried (network
-  errors, 429, 5xx) and anything still failing is listed per plant in the
-  response.
-- If every `fetch` to ntfy dies at the network layer (Node prefers IPv6, and
-  a host without working IPv6 egress reports only "fetch failed"), the run
-  retries over an IPv4-pinned connection. `sentViaFallback` in the response
-  counts how many notifications needed it — anything above 0 means outbound
-  IPv6 on the app host is broken.
+The app decides *who* needs watering; the GitHub runner *sends* the
+notifications. That split is not decoration: Railway's network cannot open a
+connection to ntfy.sh at all (`connect ETIMEDOUT` on 443, and no IPv6 route),
+so a reminder sent from the app never arrives. The runner has no such problem.
+
+- `POST /api/cron/reminders?mode=prepare` (header `x-cron-secret: $CRON_SECRET`)
+  computes due tasks with the same engine and returns the ready-made
+  notifications — **without** the topic, and without sending anything:
+
+  ```json
+  {"plants":3,"due":2,"notifications":[{"title":"💧 Water: …","message":"…","tags":["potted_plant"],"click":"https://…/plants/abc"}],"failures":[]}
+  ```
+
+- `.github/workflows/plant-reminders.yml` calls it daily at **07:00 UTC**, adds
+  the topic from the `NTFY_TOPIC` repo secret and POSTs each notification to
+  ntfy (also runnable manually via *Actions → plant-reminders → Run workflow*).
+  It never prints the payloads — they contain plant nicknames and the Actions
+  log is public.
+- Overdue plants ping again every day until you mark the task done — by design.
+- `POST /api/cron/reminders` with no `mode` still sends from the app itself
+  (one ntfy notification per due plant, retried, with an IPv4-pinned fallback
+  when `fetch` fails at the network layer). Usable if the app ever moves
+  somewhere with working egress to ntfy; needs `NTFY_TOPIC` on the app service.
 - What the status codes mean when a run goes red:
 
   | Status | Meaning | Fix |
   |---|---|---|
   | `401` | `CRON_SECRET` in GitHub ≠ `CRON_SECRET` on Railway | Re-paste the same string in both places |
-  | `500` | `NTFY_TOPIC` missing on the app service, or the database is unreachable | Check the app service's Variables tab in Railway |
-  | `502` | ntfy rejected/dropped **every** notification | Check the `failures` in the body (e.g. `HTTP 429` = rate-limited) |
-  | `200` | Sent — the body reports `sent` and any per-plant `failures` | — |
+  | `500` | Database unreachable, or (send mode) `NTFY_TOPIC` missing on the app service | Check the app service's Variables tab in Railway |
+  | `502` | (send mode) ntfy rejected or never received **every** notification | Read the `failures` in the body — it names the connection error |
+  | `200` | The app answered; the workflow log then reports how many notifications went out | — |
 
 - `GET /api/cron/reminders` (same secret header) is a config check: it reports
   whether `NTFY_TOPIC`/`APP_URL` are set, whether the database answers, and
-  whether ntfy is reachable over each transport (`ntfyReachable`), **without
-  sending anything**. The workflow calls it automatically after a failed run,
-  so the Actions log shows what was misconfigured.
+  whether ntfy is reachable from the app over each transport
+  (`ntfyReachable`), **without sending anything**. The workflow calls it
+  automatically when the app won't answer, so the Actions log shows why.
 
 > ⏰ **Timezone caveat:** GitHub cron is UTC and ignores DST. `0 7 * * *` ≈
 > 08:00 in Swedish winter and 09:00 in Swedish summer. Edit the cron hour in
