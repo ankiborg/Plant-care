@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlantWithRelations } from "./care";
 import {
+  describeError,
   reminderMessage,
   resolveAppUrl,
   resolveNtfyServer,
@@ -42,8 +43,21 @@ function plant(overrides: Partial<PlantWithRelations> = {}): PlantWithRelations 
 }
 
 const ok = () => new Response(null, { status: 200 });
+
+/** Network error shaped like undici's: the reason hides in `cause`. */
+const netError = () =>
+  Object.assign(new Error("fetch failed"), {
+    cause: new Error("ENOTFOUND ntfy.sh"),
+  });
+
+/** Default the IPv4 fallback to "also broken" so tests stay deterministic. */
 const send = (options: Parameters<typeof sendReminders>[0]) =>
-  sendReminders({ retryDelayMs: 0, today: day("2026-06-01"), ...options });
+  sendReminders({
+    retryDelayMs: 0,
+    today: day("2026-06-01"),
+    fallbackPublish: async () => ({ ok: false, error: "ipv4 blocked" }),
+    ...options,
+  });
 
 describe("resolveNtfyTopic", () => {
   it("returns null when unset or blank", () => {
@@ -101,6 +115,37 @@ describe("resolveAppUrl", () => {
   });
 });
 
+describe("describeError", () => {
+  it("unwraps the cause chain fetch hides the real reason in", () => {
+    expect(describeError(netError())).toBe("fetch failed (ENOTFOUND ntfy.sh)");
+  });
+
+  it("flattens the per-address errors of a dual-stack failure", () => {
+    const aggregate = new AggregateError(
+      [
+        Object.assign(new Error("connect ENETUNREACH 2606:4700::1:443"), {
+          code: "ENETUNREACH",
+        }),
+        Object.assign(new Error("connect ETIMEDOUT 104.21.0.1:443"), {
+          code: "ETIMEDOUT",
+        }),
+      ],
+      ""
+    );
+
+    const described = describeError(
+      Object.assign(new Error("fetch failed"), { cause: aggregate })
+    );
+
+    expect(described).toContain("ENETUNREACH");
+    expect(described).toContain("ETIMEDOUT");
+  });
+
+  it("survives a non-Error", () => {
+    expect(describeError("boom")).toBe("boom");
+  });
+});
+
 describe("reminderMessage", () => {
   it("combines water and fertilize into one notification", () => {
     expect(reminderMessage("Basilika", ["WATER", "FERTILIZE"])).toEqual({
@@ -135,7 +180,13 @@ describe("sendReminders", () => {
       fetchImpl,
     });
 
-    expect(report).toEqual({ plants: 2, due: 1, sent: 1, failures: [] });
+    expect(report).toEqual({
+      plants: 2,
+      due: 1,
+      sent: 1,
+      sentViaFallback: 0,
+      failures: [],
+    });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
 
     const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
@@ -161,14 +212,7 @@ describe("sendReminders", () => {
   });
 
   it("retries a network error and reports success", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockRejectedValueOnce(
-        Object.assign(new Error("fetch failed"), {
-          cause: new Error("ENOTFOUND ntfy.sh"),
-        })
-      )
-      .mockResolvedValue(ok());
+    const fetchImpl = vi.fn().mockRejectedValueOnce(netError()).mockResolvedValue(ok());
 
     const report = await send({
       plants: [plant()],
@@ -177,17 +221,17 @@ describe("sendReminders", () => {
     });
 
     expect(fetchImpl).toHaveBeenCalledTimes(2);
-    expect(report).toEqual({ plants: 1, due: 1, sent: 1, failures: [] });
+    expect(report).toEqual({
+      plants: 1,
+      due: 1,
+      sent: 1,
+      sentViaFallback: 0,
+      failures: [],
+    });
   });
 
   it("gives up after the retries and records why, without throwing", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockRejectedValue(
-        Object.assign(new Error("fetch failed"), {
-          cause: new Error("ENOTFOUND ntfy.sh"),
-        })
-      );
+    const fetchImpl = vi.fn().mockRejectedValue(netError());
 
     const report = await send({
       plants: [plant()],
@@ -198,8 +242,43 @@ describe("sendReminders", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(report.sent).toBe(0);
     expect(report.failures).toEqual([
-      { plantId: "p1", error: "fetch failed (ENOTFOUND ntfy.sh)" },
+      {
+        plantId: "p1",
+        error:
+          "fetch failed (ENOTFOUND ntfy.sh); ipv4 fallback: ipv4 blocked",
+      },
     ]);
+  });
+
+  it("falls back to the IPv4 path when every fetch dies at the network layer", async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(netError());
+    const fallbackPublish = vi.fn().mockResolvedValue({ ok: true });
+
+    const report = await send({
+      plants: [plant()],
+      topic: "secret-topic",
+      fetchImpl,
+      fallbackPublish,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fallbackPublish).toHaveBeenCalledTimes(1);
+    expect(report).toMatchObject({ sent: 1, sentViaFallback: 1, failures: [] });
+  });
+
+  it("does not reach for the fallback when ntfy itself answered", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 500 }));
+    const fallbackPublish = vi.fn().mockResolvedValue({ ok: true });
+
+    const report = await send({
+      plants: [plant()],
+      topic: "secret-topic",
+      fetchImpl,
+      fallbackPublish,
+    });
+
+    expect(fallbackPublish).not.toHaveBeenCalled();
+    expect(report.failures).toEqual([{ plantId: "p1", error: "HTTP 500" }]);
   });
 
   it("does not retry a client error from ntfy", async () => {

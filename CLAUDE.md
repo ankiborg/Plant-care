@@ -45,8 +45,13 @@ Env vars (Railway app service): `DATABASE_URL`, `CLOUDINARY_URL`,
   the report, because one bad plant used to kill the whole run. Route returns
   500 (misconfigured/DB down), 502 (every notification failed) or 200 with a
   `{plants, due, sent, failures}` report; `GET` on the same path is a
-  send-nothing config check. Response bodies land in a public Actions log —
-  keep secrets and nicknames out of them.
+  send-nothing config check (it also probes ntfy over both transports).
+  Response bodies land in a public Actions log — keep secrets and nicknames
+  out of them. Outbound sends go through `fetch` first and fall back to an
+  IPv4-pinned `node:https` request when every attempt fails at the network
+  layer (`fetch failed` with nothing else to go on). `node:http(s)` must be
+  imported statically — a computed `await import()` passes tests and then
+  throws MODULE_NOT_FOUND inside the bundled route.
 - `lib/actions.ts` — all server actions. Photo paths never throw: they return
   `{status:"error", message}` states with distinct messages for missing vs
   broken `CLOUDINARY_URL`. 8 MB photo cap (`lib/photo-limits.ts`, checked
